@@ -1,0 +1,6 @@
+compiled with vs2019 from
+
+https://github.com/eclipse-cyclonedds/cyclonedds.git
+b3c386e328fc2015bfa5494d6840be973fce2e7e
+
+(early after bumping the version to 0.10.0)

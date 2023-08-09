@@ -1,0 +1,46 @@
+RECEIVING STATEGIES
+ - Polling [DONE]
+ - Listener [DONE]
+ - Wait set
+
+
+VISUALIZATION
+
+Visualize samples from publishers of same class as a swarm of particles.
+
+Each publisher = one particle drawn on a circle.
+Angle on the circle derived from send time stamp of the last sample received.
+Additional offset derived from publisher index (equidistant particles, offset = index*360/numParticles).
+
+Healthy reception = particle smoothly moving along a circle.
+Stop reception = particle static, not moving.
+Missed update = visual jerk in smooth movement, bigger for more missed samples.
+ReceptioDelays particle
+
+Alternative reference ghost particle(s) having the angle derived from local time.
+Reception latency as visual difference between ghost and non-ghost particle
+(assumes synchronized system clock between publisher and subscriber).
+
+Different swarms (one per message class) at different location in 3d world.
+Mouse & keyboard controlled free camera. Quick jump to different swarms.
+
+
+Different style of visualization for keyed instances of same msg class
+ - one particle per instance
+ - offset from rotating "grid" derived from instance index
+
+
+
+
+
+Additional topic classes
+ - Single instance, variable size topic
+ - Multi-instance fixed size topic
+
+
+
+
+
+Different interpretation of control values for producers of keyed instances
+ - size = number of instances
+ - rate = how often to update each instance

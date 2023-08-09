@@ -1,0 +1,75 @@
+module Net
+{
+
+// each app publishes one instance
+struct AppId
+{
+    string ComputerName;
+    long ProcessId;
+};
+#pragma keylist AppId ComputerName ProcessId
+
+
+struct MsgSpec
+{
+    long Disabled; // 0=enabled
+    boolean Opened; // settings editor shown unfolded
+
+    string Name; // name of the message class (predefined, each having different QoS etc.)
+
+    long Rate; // messages per second
+    long Size; // approx size in bytes
+
+    sequence<long> SubsCnt; // number of subscribers per individual apps (size=num of apps)
+    boolean AllSubsDisabled; // true = as if SubsCnt all zeros
+
+    sequence<long> PublCnt; // number of publishers per individual apps (size=num of apps)
+    boolean AllPublDisabled; // true = as if PublCnt all zeros
+};
+
+// reflects the state of the master control
+// published by the master controller app
+struct MasterSettings
+{
+    AppId Sender; // who is sending the update (to filter out own changes)
+    boolean Disabled; // do not do any work
+    sequence<AppId> Apps; // apps found; the index of an app used as bit number for publisher/subscriber masks in MsgSpec
+    sequence<MsgSpec> Msgs;  // msg classes to use in the perf tests
+};
+#pragma keylist MasterSettings
+
+// statistics the subs are pusblishing about themselves
+struct SubsStats
+{
+    long AppIndex;   // index to MasterSettings.Apps
+    string MsgClass; // MsgSpec.Name
+    long InAppIndex;   // index within app
+
+    long Received;  // total msgs received
+    long Rate;       // measured rate of the message
+    long Lost;     // total number of missed by this subscriber
+
+};
+#pragma keylist SubsStats AppIndex MsgClass InAppIndex
+
+// this one is sent by the publishers
+// (each msg class created its own topic using this data struct)
+struct TestMsg
+{
+    long AppId; // from what app
+    long InAppIndex; // from what publisher
+    long SeqNum; // incremented by publisher; for checking missed messages
+    sequence<octet> Payload;
+};
+#pragma keylist TestMsg
+
+// type="ResetAll", data=""
+struct Command
+{
+    string Type; 
+    string Data;
+};
+#pragma keylist Command
+
+};
+

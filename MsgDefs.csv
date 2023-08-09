@@ -1,0 +1,26 @@
+Name,Reliability,Durability,History,HistoryDepth,ReadStrategy
+
+; commands
+cmd_RTA_P,reliable,transientLocal,keepAll,0,Poll
+cmd_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed
+cmd_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer
+
+; infrequent state updates
+stat_RVL1_P,reliable,volatile,keepLast,1,Poll
+stat_RVL1_LI,reliable,volatile,keepLast,1,ListenImmed
+stat_RVL1_LD,reliable,volatile,keepLast,1,ListenDefer
+
+; frequent state updates
+stat_UVL1_P,bestEffort,volatile,keepLast,1,Poll
+stat_UVL1_LI,bestEffort,volatile,keepLast,1,ListenImmed
+stat_UVL1_LD,bestEffort,volatile,keepLast,1,ListenDefer
+
+; strangely defined event messages making late-joiners suffer from getting all historical events
+strange_RTA_P,reliable,transientLocal,keepAll,0,Poll
+strange_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed
+strange_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer
+
+; some other testing ones
+RVA_P,reliable,volatile,keepAll,0,Poll
+UTL9_LI,bestEffort,transientLocal,KeepLast,9,ListenImmed
+RTA_LD,Reliable,transientLocal,KeepAll,3,ListenDefer
