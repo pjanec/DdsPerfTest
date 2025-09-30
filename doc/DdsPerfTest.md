@@ -105,6 +105,79 @@ The application's behavior is heavily influenced by the message definitions in M
   * **Performance Assessment**: Tests reliable delivery without the history overhead.  
     ListenDefer is a hybrid strategy where the DDS thread just flags that data is available, and the main thread reads it later23232323. This can be a good balance between responsiveness and thread safety.
 
+The message types in MsgDefs.csv are predefined profiles designed to simulate various real-world data distribution scenarios by combining different DDS Quality of Service (QoS) and application-level reading strategies.
+
+The naming convention generally follows this pattern:
+
+\<Use Case\>\_\<Reliability\>\<Durability\>\<History\>\<HistoryDepth\>\_\<ReadStrategy\>
+
+---
+
+#### **1\. Command Messages (cmd\_\*)**
+
+These message types simulate critical, one-time commands or events where every single message must be delivered, even to applications that start late.
+
+* **QoS Profile (RTA)**:  
+  * **Reliability**: reliable \- Guarantees delivery. DDS will re-transmit if packets are lost.  
+  * **Durability**: transientLocal \- The DDS service persists the data, so a newly started subscriber will receive messages that were sent before it launched.  
+  * **History**: keepAll \- Every message sent is kept in history for late joiners.  
+* **Variants**:  
+  * cmd\_RTA\_P: Uses a **Poll** (\_P) reading strategy, where the subscriber's main loop periodically checks for new data1.  
+  * cmd\_RTA\_LI: Uses a **ListenImmed** (\_LI) strategy, where the subscriber processes data immediately within the DDS listener's callback thread upon arrival2.  
+  * cmd\_RTA\_LD: Uses a **ListenDefer** (\_LD) strategy, where the DDS listener's callback only sets a flag, and the main loop polls for data only when that flag is set3.
+
+#### **2\. Infrequent, Reliable State Updates (stat\_RVL1\_\*)**
+
+These types simulate important status updates where only the most recent value is relevant, but its delivery must be guaranteed.
+
+* **QoS Profile (RVL1)**:  
+  * **Reliability**: reliable \- Guarantees delivery of the state update.  
+  * **Durability**: volatile \- Messages are not persisted for late joiners; only currently active subscribers receive them.  
+  * **History**: keepLast with a **Depth** of 1 \- Only the single most recent message is stored and delivered.  
+* **Variants**:  
+  * stat\_RVL1\_P: Poll-based reading strategy4.  
+  * stat\_RVL1\_LI: Immediate listener-based reading strategy5.  
+  * stat\_RVL1\_LD: Deferred listener-based reading strategy6.
+
+### **3\. Frequent, Unreliable State Updates (stat\_UVL1\_\*)**
+
+These types simulate high-frequency telemetry or data streams (like sensor data or game object positions) where speed is more important than guaranteed delivery of every single message.
+
+* **QoS Profile (UVL1)**:  
+  * **Reliability**: bestEffort \- Does not guarantee delivery. This reduces network overhead and latency.  
+  * **Durability**: volatile \- Messages are not persisted for late joiners.  
+  * **History**: keepLast with a **Depth** of 1 \- Only the most recent value is relevant.  
+* **Variants**:  
+  * stat\_UVL1\_P: Poll-based reading strategy7.  
+  * stat\_UVL1\_LI: Immediate listener-based reading strategy8.  
+  * stat\_UVL1\_LD: Deferred listener-based reading strategy9.
+
+#### **4\. "Strange" Event Messages (strange\_RTA\_\*)**
+
+This category is a deliberate test case to highlight a common misuse of DDS settings10. It uses the same "command" QoS profile but is intended to simulate a stream of frequent events.
+
+* **QoS Profile (RTA)**:  
+  * **Reliability**: reliable  
+  * **Durability**: transientLocal  
+  * **History**: keepAll  
+* **Test Purpose**: This profile is designed to show what happens when you use settings meant for one-shot commands for a continuous stream of events. A late-joining subscriber will be  
+   **flooded with the entire history of every message ever sent**, which can cause a massive network spike and overwhelm the application11. This is useful for testing the robustness of a system against such data bursts.  
+* **Variants**: It includes \_P, \_LI, and \_LD reading strategies12.
+
+#### **5\. Miscellaneous Test Cases**
+
+These are additional profiles for testing specific QoS combinations.
+
+* RVA\_P:  
+  * **Profile**: reliable, volatile, keepAll, Poll.  
+  * **Test Purpose**: Tests the reliable delivery of a full history stream to **currently connected** subscribers. Because it's volatile, late joiners will not receive the history.  
+* UTL9\_LI:  
+  * **Profile**: bestEffort, transientLocal, KeepLast with a **Depth** of 9, ListenImmed.  
+  * **Test Purpose**: Simulates a scenario where delivery isn't guaranteed, but late joiners can still get a snapshot of the last 9 messages to quickly get up to speed.  
+* RTA\_LD:  
+  * **Profile**: Reliable, transientLocal, KeepAll, with a **HistoryDepth** of 3, ListenDefer.  
+  * **Test Purpose**: This is nearly identical to cmd\_RTA\_LD. The HistoryDepth of 3 is technically ignored by the DDS service when the History kind is set to KeepAll, but this profile can be used to verify that the implementation behaves as expected.
+
 ---
 
 #### **3\. Defining New Message Types**
@@ -125,4 +198,3 @@ You can easily define new message types to test different QoS configurations wit
 Your new message type will now be available for selection when you click the
 
 \+ button in the **"Msg Setting"** window24, allowing you to immediately use it in your tests.
-
