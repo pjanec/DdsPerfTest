@@ -50,9 +50,8 @@ namespace DdsPerfTest
             changed |= ImGui::SliderInt("Rate", &msgSpec.Rate, 0, 1000, "%d");
             changed |= ImGui::SliderInt("Size", &msgSpec.Size, 0, 100000, "%d");
 
-            changed |= DrawPerAppCnt("Pubs##Publ", msgSpec.PublCnt, msgSpec.AllPublDisabled);
-
-            changed |= DrawPerAppCnt("Subs##Subscr", msgSpec.SubsCnt, msgSpec.AllSubsDisabled);
+            // Use the new combined publisher/subscriber table
+            changed |= DrawPubSubTable(msgSpec);
 
             if (ImGui::Button("Remove"))
             {
@@ -68,79 +67,208 @@ namespace DdsPerfTest
 
     bool MsgEdit::DrawPerAppCnt(const char* name, std::vector<int>& perAppCnts, bool& allDisabled)
     {
+        // This method is no longer used in the new implementation
+        // The logic has been moved to DrawPubSubTable
+        return false;
+    }
+
+    bool MsgEdit::DrawPubSubTable(MsgSettings& msgSpec)
+    {
         bool changed = false;
 
-        if (perAppCnts.size() < _edited.Apps.size()) // adjust size to app count
-            perAppCnts.resize(_edited.Apps.size(), 0);
-
-        ImGui::PushID(name);
-
-        // individual app checkboxes
-        ImGui::Indent();
-        for (int i = 0; i < (int)perAppCnts.size(); i++)
-        {
-            bool haveApp = i < (int)_edited.Apps.size();
-
-            ImGui::PushID(i);
-            // number per app
-            ImGui::SetNextItemWidth(ImGui::GetWindowWidth() / 20);
-            char buf[100]; sprintf(buf, "%d", perAppCnts[i]);
-            if (!haveApp)
-            {
-                // set style to gray
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5, 0.5, 0.5, 1));
+        // Calculate totals for both publishers and subscribers
+        int totalPubs = 0, totalSubs = 0;
+        for (int count : msgSpec.PublCnt) totalPubs += count;
+        for (int count : msgSpec.SubsCnt) totalSubs += count;
+        
+        // Use fixed ID based on message name to prevent header from closing when totals change
+        ImGui::PushID(("PubSubTable_" + msgSpec.Name).c_str());
+        
+        // Header with totals - use ## to hide the ID part from display
+        std::string headerText = "Publishers & Subscribers (Pubs: " + std::to_string(totalPubs) + 
+                               ", Subs: " + std::to_string(totalSubs) + ")##" + msgSpec.Name;
+        
+        if (ImGui::CollapsingHeader(headerText.c_str())) {
+            ImGui::Indent();
+            
+            // Quick actions with input fields for custom values
+            ImGui::Text("Quick Actions:");
+            
+            // Publishers section
+            ImGui::Text("Publishers:");
+            ImGui::SameLine();
+            
+            // Input field for publisher count
+            static std::map<std::string, int> pubSetValues; // Store per message type
+            if (pubSetValues.find(msgSpec.Name) == pubSetValues.end()) {
+                pubSetValues[msgSpec.Name] = 1; // Default value
             }
-
-            if (ImGui::InputText("", buf, 100))
-            {
-                int val = atoi(buf);
-                if (val < 0) val = 0;
-                perAppCnts[i] = val;
+            
+            ImGui::SetNextItemWidth(60);
+            ImGui::InputInt("##pubSetValue", &pubSetValues[msgSpec.Name], 0, 0, ImGuiInputTextFlags_CharsDecimal);
+            if (pubSetValues[msgSpec.Name] < 0) pubSetValues[msgSpec.Name] = 0;
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Set All Pubs")) {
+                for (size_t i = 0; i < _edited.Apps.size() && i < msgSpec.PublCnt.size(); i++) {
+                    msgSpec.PublCnt[i] = pubSetValues[msgSpec.Name];
+                }
                 changed = true;
             }
-
-            if (!haveApp)
-            {
-                ImGui::PopStyleColor();
+            ImGui::SameLine();
+            if (ImGui::Button("Clear All Pubs")) {
+                for (size_t i = 0; i < msgSpec.PublCnt.size(); i++) {
+                    msgSpec.PublCnt[i] = 0;
+                }
+                changed = true;
             }
-
-            // tooltip over the app-specific widget
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::BeginTooltip();
-                if (haveApp)
-                    ImGui::Text("%s %d", _edited.Apps[i].ComputerName.c_str(), _edited.Apps[i].ProcessId);
-                else
-                    ImGui::Text("[not enough apps running]");
-                ImGui::EndTooltip();
+            
+            // Subscribers section
+            ImGui::Text("Subscribers:");
+            ImGui::SameLine();
+            
+            // Input field for subscriber count
+            static std::map<std::string, int> subSetValues; // Store per message type
+            if (subSetValues.find(msgSpec.Name) == subSetValues.end()) {
+                subSetValues[msgSpec.Name] = 1; // Default value
             }
-
-            ImGui::PopID();
-
-            if (i < (int)perAppCnts.size() - 1)
-                ImGui::SameLine();
+            
+            ImGui::SetNextItemWidth(60);
+            ImGui::InputInt("##subSetValue", &subSetValues[msgSpec.Name], 0, 0, ImGuiInputTextFlags_CharsDecimal);
+            if (subSetValues[msgSpec.Name] < 0) subSetValues[msgSpec.Name] = 0;
+            
+            ImGui::SameLine();
+            if (ImGui::Button("Set All Subs")) {
+                for (size_t i = 0; i < _edited.Apps.size() && i < msgSpec.SubsCnt.size(); i++) {
+                    msgSpec.SubsCnt[i] = subSetValues[msgSpec.Name];
+                }
+                changed = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Clear All Subs")) {
+                for (size_t i = 0; i < msgSpec.SubsCnt.size(); i++) {
+                    msgSpec.SubsCnt[i] = 0;
+                }
+                changed = true;
+            }
+            
+            ImGui::NewLine();
+            if (ImGui::Checkbox("Disable All Publishers", &msgSpec.AllPublDisabled)) {
+                changed = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Disable All Subscribers", &msgSpec.AllSubsDisabled)) {
+                changed = true;
+            }
+            
+            ImGui::Separator();
+            
+            // Ensure both vectors are properly sized
+            if (msgSpec.PublCnt.size() < _edited.Apps.size()) {
+                msgSpec.PublCnt.resize(_edited.Apps.size(), 0);
+            }
+            if (msgSpec.SubsCnt.size() < _edited.Apps.size()) {
+                msgSpec.SubsCnt.resize(_edited.Apps.size(), 0);
+            }
+            
+            // Calculate adaptive table height based on number of apps
+            int numApps = (int)std::max(msgSpec.PublCnt.size(), msgSpec.SubsCnt.size());
+            float rowHeight = 25.0f;
+            float headerHeight = 30.0f;
+            float maxTableHeight = 500.0f;  // Increased from 300px
+            float minTableHeight = 150.0f;  // Minimum height to show at least 5-6 rows
+            
+            // Adaptive height: show more rows for larger deployments
+            float idealHeight = headerHeight + (numApps * rowHeight) + 20.0f; // +20 for padding
+            float actualHeight = std::max(minTableHeight, std::min(maxTableHeight, idealHeight));
+            
+            // Show info about scrolling for large deployments
+            if (numApps > 15) {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                    "Showing %d apps (scroll to see all)", numApps);
+            }
+            
+            // Single table for both publishers and subscribers
+            if (ImGui::BeginTable("PubSubTable", 4, 
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | 
+                ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable |
+                ImGuiTableFlags_SizingFixedFit,  // Better column sizing
+                ImVec2(0, actualHeight))) {
+                
+                // Table headers
+                ImGui::TableSetupColumn("App", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableSetupColumn("Computer:PID", ImGuiTableColumnFlags_WidthStretch, 200.0f);
+                ImGui::TableSetupColumn("Pubs", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Subs", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupScrollFreeze(0, 1); // Freeze header row
+                ImGui::TableHeadersRow();
+                
+                // Table rows
+                for (int i = 0; i < numApps; i++) {
+                    bool haveApp = i < (int)_edited.Apps.size();
+                    
+                    ImGui::TableNextRow();
+                    ImGui::PushID(i);
+                    
+                    // App index column
+                    ImGui::TableNextColumn();
+                    if (!haveApp) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5, 0.5, 0.5, 1));
+                    }
+                    ImGui::Text("%d", i);
+                    
+                    // Computer name column
+                    ImGui::TableNextColumn();
+                    if (haveApp) {
+                        ImGui::Text("%s:%d", _edited.Apps[i].ComputerName.c_str(), _edited.Apps[i].ProcessId);
+                    } else {
+                        ImGui::Text("[not available]");
+                    }
+                    
+                    // Publishers count column
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    if (i < (int)msgSpec.PublCnt.size()) {
+                        char pubBuf[100];
+                        sprintf(pubBuf, "%d", msgSpec.PublCnt[i]);
+                        if (ImGui::InputText("##pub", pubBuf, sizeof(pubBuf), 
+                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_AutoSelectAll)) {
+                            int val = atoi(pubBuf);
+                            if (val < 0) val = 0;
+                            msgSpec.PublCnt[i] = val;
+                            changed = true;
+                        }
+                    }
+                    
+                    // Subscribers count column
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    if (i < (int)msgSpec.SubsCnt.size()) {
+                        char subBuf[100];
+                        sprintf(subBuf, "%d", msgSpec.SubsCnt[i]);
+                        if (ImGui::InputText("##sub", subBuf, sizeof(subBuf), 
+                            ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_AutoSelectAll)) {
+                            int val = atoi(subBuf);
+                            if (val < 0) val = 0;
+                            msgSpec.SubsCnt[i] = val;
+                            changed = true;
+                        }
+                    }
+                    
+                    if (!haveApp) {
+                        ImGui::PopStyleColor();
+                    }
+                    
+                    ImGui::PopID();
+                }
+                
+                ImGui::EndTable();
+            }
+            
+            ImGui::Unindent();
         }
-
-        // title of the group
-        ImGui::SameLine();
-
-        std::string strippedName = name;
-        strippedName = strippedName.substr(0, strippedName.find("##"));
-        ImGui::Text(strippedName.c_str());
-
-        // checkbox that toggles all at once
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
-
-        if (ImGui::Checkbox("Disable", &allDisabled))
-        {
-            changed = true;
-        }
-
-
-        ImGui::Unindent();
-
-        ImGui::PopID();
+        
+        ImGui::PopID(); // Pop the fixed ID for this message type
 
         return changed;
     }
@@ -212,9 +340,5 @@ namespace DdsPerfTest
         }
 
     }
-
-
-
-
 
 }
