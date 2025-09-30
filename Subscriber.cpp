@@ -31,7 +31,10 @@ Subscriber::Subscriber(App* app, std::string msgClass, int index) :
 
 	_participant = _app->GetParticipant(_index);
 
-	// create topic
+	// Parse partition names from the message definition
+	auto partitions = _msgDef.ParsePartitions();
+
+	// create topic with partition support
 	_topicRW = std::make_shared<TopicRW>(
 		_participant,
 		msgClass.c_str(),
@@ -40,8 +43,9 @@ Subscriber::Subscriber(App* app, std::string msgClass, int index) :
 		_msgDef.Durability,
 		_msgDef.History,
 		_msgDef.HistoryDepth,
-		true,
-		false);
+		partitions,  // Pass partition information
+		true,   // wantReader
+		false); // wantWriter
 
 	// setup listener
 	if( _msgDef.ReadStrategy == ssListenImmed || _msgDef.ReadStrategy == ssListenDefer )
@@ -85,44 +89,9 @@ void Subscriber::TickReadStrategy()
 		StrategyPoll();
 	}
 	else
-	if (_msgDef.ReadStrategy == ssListenImmed)
-	{
-		StrategyListenImmed();
-	}
-	else
 	if (_msgDef.ReadStrategy == ssListenDefer)
 	{
 		StrategyListenDefer();
-	}
-}
-
-void Subscriber::PollAllSamples()
-{
-	while(true)	// keep reading until there is some data
-	{
-		const int MAX_SAMPLES = 10;
-		Net_TestMsg* samples[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
-		dds_sample_info_t infos[MAX_SAMPLES];
-
-		int num = dds_take(_topicRW->GetReader(), (void**)samples, infos, MAX_SAMPLES, MAX_SAMPLES);
-		
-		if (num == DDS_RETCODE_NO_DATA)
-			break;
-
-		if (num == 0)
-			break;
-
-		if (num < 0)
-		{
-			printf("dds_read(%s)): %s\n", _msgSpec.Name.c_str(), dds_strretcode(-num));
-			_numReadErrors++;
-		}
-
-		for (int i = 0; i < num; i++)
-		{
-			auto* sample = samples[i];
-			OnSample(*sample, infos[i]);
-		}
 	}
 }
 
@@ -131,97 +100,124 @@ void Subscriber::StrategyPoll()
 	PollAllSamples();
 }
 
+void Subscriber::StrategyListenImmed()
+{
+	// the samples are processed directly in the listener callback
+}
+
+void Subscriber::StrategyListenDefer()
+{
+	if (_dataAvailable)
+	{
+		_dataAvailable = false;
+		PollAllSamples();
+	}
+}
+
+void Subscriber::PollAllSamples()
+{
+	const int MAX_SAMPLES = 1;
+	Net_TestMsg* samples[MAX_SAMPLES] = { 0 }; // DDS allocates memory for us
+	dds_sample_info_t infos[MAX_SAMPLES];
+
+	while (true)
+	{
+		auto ret = dds_take(_topicRW->GetReader(), (void**)samples, infos, MAX_SAMPLES, MAX_SAMPLES);
+		if (ret < 0)
+		{
+			_numReadErrors++;
+			// todo: handle error
+			break;
+		}
+		else if (ret == 0)
+		{
+			// no more samples
+			break;
+		}
+		else
+		{
+			// process sample
+			auto sample = samples[0];
+			OnSample(*sample, infos[0]);
+		}
+	}
+}
+
+void Subscriber::OnSample( Net_TestMsg& sample, dds_sample_info_t& info)
+{
+	if (info.valid_data && info.instance_state == DDS_ALIVE_INSTANCE_STATE)
+	{
+		// check for lost messages (seqnum gap)
+		PubKey pubKey = { sample.AppId, sample.InAppIndex };
+		if (_lastReceiveSeqNums.find(pubKey) != _lastReceiveSeqNums.end())
+		{
+			int lastSeqNum = _lastReceiveSeqNums[pubKey];
+			int expectedSeqNum = lastSeqNum + 1;
+			if (sample.SeqNum != expectedSeqNum)
+			{
+				int lost = sample.SeqNum - expectedSeqNum;
+				if (lost > 0)
+				{
+					_numLostMsgs += lost;
+				}
+			}
+		}
+		_lastReceiveSeqNums[pubKey] = sample.SeqNum;
+
+		_numRecvTotal++;
+		_numRecvSinceLastRateCalc++;
+	}
+}
+
+void Subscriber::CalcRate()
+{
+	_rate = _numRecvSinceLastRateCalc * 2; // we are called every 500ms, so multiply by 2 to get per-second rate
+	_numRecvSinceLastRateCalc = 0;
+}
+
+void Subscriber::SendStats( bool dispose )
+{
+	Net_SubsStats stats;
+	stats.AppIndex = _app->GetAppIndex();
+	stats.MsgClass = dds_string_dup(_msgClass.c_str());
+	stats.InAppIndex = _index;
+	stats.PartitionName = dds_string_dup(_msgDef.PartitionName.c_str());  // NEW: Include partition name
+	stats.Received = _numRecvTotal;
+	stats.Rate = _rate;
+	stats.Lost = _numLostMsgs;
+
+	auto writer = _app->GetSubsStatsWriter();
+	dds_return_t rc;
+	if( dispose )
+		rc = dds_dispose(writer, &stats);
+	else
+		rc = dds_write(writer, &stats);
+	
+	if( rc < 0 )
+		printf("SendStats failed: %s\n", dds_strretcode(-rc));
+}
+
 void Subscriber::OnDataAvailable()
 {
-	if( _msgDef.ReadStrategy == ssListenImmed )
+	_dataAvailableCount++;
+
+	if (_msgDef.ReadStrategy == ssListenImmed)
 	{
+		StrategyListenImmed();
 		PollAllSamples();
 	}
 	else
 	if (_msgDef.ReadStrategy == ssListenDefer)
 	{
-		_dataAvailableCount++;
+		_dataAvailable = true;
 	}
 }
 
-
-void Subscriber::StrategyListenImmed()
+void Subscriber::__OnDataAvailable(dds_entity_t reader, void* arg)
 {
-	// nothing here, polling aready done in OnDataAvailable
-}
-
-void Subscriber::StrategyListenDefer()
-{
-	if (_dataAvailableCount > 0)
-	{
-		PollAllSamples();
-		_dataAvailableCount--;
-	}
-}
-
-
-void Subscriber::OnSample(Net_TestMsg& sample, dds_sample_info_t& info)
-{
-	_numRecvTotal++;
-	_numRecvSinceLastRateCalc++;
-
-	PubKey key;
-	key.AppIndex = sample.AppId;
-	key.InAppIndex = sample.InAppIndex;
-
-	// find key in last received samples
-	auto it = _lastReceiveSeqNums.find(key);
-	if (it != _lastReceiveSeqNums.end())
-	{						
-		// check if seqnum is correct
-		int expected = it->second + 1;
-		if (sample.SeqNum != expected)
-		{
-			_numLostMsgs++;
-			printf("%s:%d: Seqnum mismatch: expected %d, got %d\n", _msgClass.c_str(), _index, expected, sample.SeqNum);
-		}
-		it->second = sample.SeqNum;
-	}
-	else // first sample from this publisher, remember the seqnum
-	{
-		_lastReceiveSeqNums[key] = sample.SeqNum;
-	}
-
-}
-
-
-
-void Subscriber::SendStats( bool dispose )
-{
-	Net_SubsStats stats = {0};
-
-	stats.InAppIndex = _index;
-	stats.AppIndex = _app->GetAppIndex();
-	stats.MsgClass = (char*) _msgClass.c_str();
-	stats.Received = _numRecvTotal;
-	stats.Rate = _rate;
-	stats.Lost = _numLostMsgs;
-
-
-	int writer = _app->GetSubsStatsWriter();
-	if( dispose )
-	{
-		dds_writedispose(writer, &stats);
-		dds_unregister_instance(writer, &stats);
-	}
-	else
-	{
-		dds_write(writer, &stats);
-	}
-}
-
-
-void Subscriber::DrawUI()
-{
-    ImGui::Begin("Subscriber");
-    ImGui::Button("Hi!");
-    ImGui::End();
-
+	(void)reader;
+	auto self = (Subscriber*)arg;
+	self->OnDataAvailable();
 }
 
 void Subscriber::UpdateSettings(const MsgSettings& spec)
@@ -229,23 +225,8 @@ void Subscriber::UpdateSettings(const MsgSettings& spec)
 	_msgSpec = spec;
 }
 
-void Subscriber::CalcRate()
+void Subscriber::DrawUI()
 {
-	int deltaUsec = (int) _timerCalcRate->GetElapsedMicroseconds();
-	if( deltaUsec == 0 )
-	{
-		return; // WTF?
-	}
-	_rate = (long long) _numRecvSinceLastRateCalc * 1000000L / deltaUsec;
-
-	_numRecvSinceLastRateCalc = 0;
-}
-
-void Subscriber::__OnDataAvailable(dds_entity_t reader, void* arg)
-{
-	Subscriber* p = (Subscriber*)arg;
-
-	p->OnDataAvailable();
 }
 
 }

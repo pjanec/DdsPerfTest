@@ -34,6 +34,18 @@ namespace DdsPerfTest
         {
             msgSpec.Opened = true;
             ImGui::Indent();
+            
+            // Find the message definition to get partition info
+            auto& msgDefs = _app->GetMsgDefs();
+            auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
+                [&msgSpec](const MsgDef& msgDef) { return msgDef.Name == msgSpec.Name; });
+            
+            // Show partition information (read-only)
+            if (msgDefIt != msgDefs.end()) {
+                std::string partitionDisplay = msgDefIt->PartitionName.empty() ? "(default)" : msgDefIt->PartitionName;
+                ImGui::InputText("Partition", (char*)partitionDisplay.c_str(), partitionDisplay.size(), ImGuiInputTextFlags_ReadOnly);
+            }
+            
             changed |= ImGui::Checkbox("Disabled", ((bool*)&msgSpec.Disabled));
             changed |= ImGui::SliderInt("Rate", &msgSpec.Rate, 0, 1000, "%d");
             changed |= ImGui::SliderInt("Size", &msgSpec.Size, 0, 100000, "%d");

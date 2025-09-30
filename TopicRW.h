@@ -1,6 +1,7 @@
 #pragma once
 #include "dds/dds.h"
 #include <string>
+#include <vector>
 
 namespace DdsPerfTest
 {
@@ -16,6 +17,7 @@ namespace DdsPerfTest
 			dds_durability_kind durability,
 			dds_history_kind history,
 			int historyDepth,
+			const std::vector<std::string>& partitions = {},  // NEW: partition names
 			bool wantReader = true,
 			bool wantWriter = true);
 		~TopicRW();

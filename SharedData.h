@@ -138,6 +138,7 @@ namespace DdsPerfTest
 	struct SubsStats
 	{
 		PubSubKey Key;
+		std::string PartitionName;  // NEW: Partition name(s) for this subscriber
 		int Received;
 		int Rate;
 		int Lost;

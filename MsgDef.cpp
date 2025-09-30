@@ -1,9 +1,30 @@
 #include "stdafx.h"
 #include "MsgDef.h"
 #include "dds/dds.h"
+#include <sstream>
 
 namespace DdsPerfTest
 {
+	std::vector<std::string> MsgDef::ParsePartitions() const
+	{
+		std::vector<std::string> partitions;
+		if (PartitionName.empty()) {
+			return partitions; // Return empty vector for default partition
+		}
+
+		std::stringstream ss(PartitionName);
+		std::string partition;
+		while (std::getline(ss, partition, ',')) {
+			// Trim whitespace from partition names
+			partition.erase(0, partition.find_first_not_of(" \t\n\r\""));
+			partition.erase(partition.find_last_not_of(" \t\n\r\"") + 1);
+			if (!partition.empty()) {
+				partitions.push_back(partition);
+			}
+		}
+		return partitions;
+	}
+
 	std::vector<MsgDef> MsgDef::ReadListFromFile(std::string fileName)
 	{
 		std::vector<MsgDef> result;
@@ -16,6 +37,9 @@ namespace DdsPerfTest
 			{
 				lineNo++;
 				if (lineNo == 1) continue; // skip the header line
+				
+				// Skip comment lines starting with ';'
+				if (line[0] == ';') continue;
 
 				MsgDef msgDef;
 				char name[1000] = { 0 };
@@ -24,8 +48,12 @@ namespace DdsPerfTest
 				char history[1000] = { 0 };
 				int historyDepth = { 0 };
 				char readStrategy[1000] = { 0 };
+				char partitionName[1000] = { 0 };
 
-				if (sscanf(line, "%[^,],%[^,],%[^,],%[^,],%d,%[^\n]", name, reliability, durability, history, &historyDepth, readStrategy) == 6)
+				int fieldsRead = sscanf(line, "%[^,],%[^,],%[^,],%[^,],%d,%[^,],%[^\n]", 
+					name, reliability, durability, history, &historyDepth, readStrategy, partitionName);
+
+				if (fieldsRead >= 6)  // At least the original 6 fields
 				{
 					msgDef.Name = name;
 
@@ -57,6 +85,10 @@ namespace DdsPerfTest
 					else
 						DDS_FATAL("Unknown readStrategy: %s\n", readStrategy);
 
+					// Handle partition name (7th field, optional)
+					if (fieldsRead >= 7) {
+						msgDef.PartitionName = partitionName;
+					}
 
 					result.push_back(msgDef);
 				}

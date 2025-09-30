@@ -27,7 +27,10 @@ namespace DdsPerfTest
 			DDS_FATAL("msgDef %s not found\n", msgClass.c_str());
         auto& msgDef = *msgDefIt;
 
-		// create topic
+        // Parse partition names from the message definition
+        auto partitions = msgDef.ParsePartitions();
+
+		// create topic with partition support
         _topicRW = std::make_shared<TopicRW>(
 			_participant,
 			msgClass.c_str(),
@@ -36,8 +39,9 @@ namespace DdsPerfTest
             msgDef.Durability,
             msgDef.History,
             msgDef.HistoryDepth,
-			false,
-			true);
+            partitions,  // Pass partition information
+			false,   // wantReader
+			true);   // wantWriter
 
 
         _sendTimer = std::make_shared<Timer>([this]() -> void { this->SendMsg(); }, -1);

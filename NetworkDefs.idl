@@ -44,6 +44,7 @@ struct SubsStats
     long AppIndex;   // index to MasterSettings.Apps
     string MsgClass; // MsgSpec.Name
     long InAppIndex;   // index within app
+    string PartitionName; // NEW: partition name(s) this subscriber is listening to
 
     long Received;  // total msgs received
     long Rate;       // measured rate of the message

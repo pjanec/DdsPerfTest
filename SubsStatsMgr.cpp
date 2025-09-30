@@ -27,8 +27,8 @@ namespace DdsPerfTest
 
 	void SubsStatsMgr::DrawSubsStats()
 	{
-		// show the stats in ImGui table (new style table)
-		if (ImGui::BeginTable("SubsStats", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
+		// show the stats in ImGui table (new style table) - increased column count to 7 for partition
+		if (ImGui::BeginTable("SubsStats", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
 		{
 			// sort stats
 			std::vector<SubsStats> stats;
@@ -41,10 +41,11 @@ namespace DdsPerfTest
 				return false;
 				});
 
-			// header
+			// header - added Partition column
 			ImGui::TableSetupColumn("Msg");
 			ImGui::TableSetupColumn("App");
 			ImGui::TableSetupColumn("Idx");
+			ImGui::TableSetupColumn("Partition");  // NEW: Partition column
 			ImGui::TableSetupColumn("Recv");
 			ImGui::TableSetupColumn("Rate");
 			ImGui::TableSetupColumn("Lost");
@@ -60,6 +61,8 @@ namespace DdsPerfTest
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Key.InAppIndex);
 				ImGui::TableNextColumn();
+				ImGui::Text("%s", s.PartitionName.c_str());  // NEW: Display partition name
+				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Received);
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Rate);
@@ -74,7 +77,7 @@ namespace DdsPerfTest
 	void SubsStatsMgr::ReadSubsStats()
 	{
 		const int MAX_SAMPLES = 10;
-		Net_MasterSettings* samples[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
+		Net_SubsStats* samples[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
 		dds_sample_info_t infos[MAX_SAMPLES];
 
 		int num = dds_take(_subsStatRW->GetReader(), (void**)samples, infos, MAX_SAMPLES, MAX_SAMPLES);
@@ -102,6 +105,7 @@ namespace DdsPerfTest
 			{
 				SubsStats stats;
 				stats.Key = key;
+				stats.PartitionName = sample->PartitionName ? sample->PartitionName : "";  // NEW: Store partition name
 				stats.Rate = sample->Rate;
 				stats.Lost = sample->Lost;
 				stats.Received = sample->Received;

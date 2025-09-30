@@ -131,6 +131,7 @@ typedef struct Net_SubsStats
   int32_t AppIndex;
   char * MsgClass;
   int32_t InAppIndex;
+  char * PartitionName;
   int32_t Received;
   int32_t Rate;
   int32_t Lost;
