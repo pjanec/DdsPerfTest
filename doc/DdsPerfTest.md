@@ -9,20 +9,13 @@ At its core, the application is a flexible tool for creating a configurable numb
 Here's a breakdown of its architecture and key features:
 
 * **Multi-App Coordination**: The application can be run on several machines simultaneously. A discovery mechanism (  
-  AppScan) allows each instance to find all other running instances on the network111111111.
-
+  AppScan) allows each instance to find all other running instances on the network.  
 * **Centralized Control**: One instance acts as a controller. Through its UI (  
-  MsgEdit), the user defines the test parameters, such as which message types to use, their publish rate, and their size222222222. These settings (
-
-  MasterSettings) are then published over DDS to all other app instances333333333.
-
-* **Dynamic Test Execution**: Each application instance receives the MasterSettings and dynamically adjusts its state. It creates or destroys publisher and subscriber objects to match the specification for its particular machine444444444. To simulate multiple applications on a single machine, each new publisher or subscriber can be assigned a different DDS participant5555.
-
-* **Real-time Statistics**: Subscribers monitor the data they receive, tracking the total message count, the current message rate, and—most importantly—the number of **lost messages** by checking a sequence number in each message666. These statistics are published back over DDS7.
-
-* **Interactive Monitoring**: The SubsStatsMgr component collects the statistics from all subscribers across all machines and displays them in a consolidated table in the UI, providing a live overview of the network's health and performance8888.
-
----
+  MsgEdit), the user defines the test parameters, such as which message types to use, their publish rate, and their size. These settings (  
+  MasterSettings) are then published over DDS to all other app instances.  
+* **Dynamic Test Execution**: Each application instance receives the MasterSettings and dynamically adjusts its state. It creates or destroys publisher and subscriber objects to match the specification for its particular machine. To simulate multiple applications on a single machine, each new publisher or subscriber can be assigned a different DDS participant.  
+* **Real-time Statistics**: Subscribers monitor the data they receive, tracking the total message count, the current message rate, and—most importantly—the number of **lost messages** by checking a sequence number in each message. These statistics are published back over DDS.  
+* **Interactive Monitoring**: The SubsStatsMgr component collects the statistics from all subscribers across all machines and displays them in a consolidated table in the UI, providing a live overview of the network's health and performance.
 
 ### **Usage Guide for Performance Testing**
 
@@ -37,27 +30,20 @@ The application's UI is divided into several windows that allow you to set up, c
 1. Launch the DdsPerfTest.exe application on all computers you want to include in the test.  
 2. On one of the machines (which will act as your controller), go to the **"App"** window.  
 3. Click the  
-   **"Collect apps"** button9. The application will use DDS to discover all other running instances. After a moment, you will see all applications appear in the UI, enabling you to assign publishers and subscribers to them.
+   **"Collect apps"** button. The application will use DDS to discover all other running instances. After a moment, you will see all applications appear in the UI, enabling you to assign publishers and subscribers to them.
 
 ##### **Step 2: Configuring a Test Scenario in the "Msg Setting" Window**
 
 This is the main control panel for your test.
 
-1. **Add a Message Class**: Click the \+ button10. A dropdown will appear with all message types defined in
-
-   MsgDefs.csv11. Select one to add it to the test scenario.
-
-2. **Configure Parameters**: For each message class you add, a collapsible header will appear. Click it to expand the settings12:
-
-   * **Disabled**: A checkbox to enable or disable testing for this specific message class. Unchecking it will create the publishers and subscribers across the network13.
-
-   * **Rate**: A slider to control how many messages per second each publisher will send (in Hz)14.
-
-   * **Size**: A slider to set the approximate payload size (in bytes) of each message15151515.
-
-   * **Pubs/Subs**: These rows are for assigning work. For both publishers ("Pubs") and subscribers ("Subs"), you will see a series of input boxes. Each box corresponds to a discovered application instance16161616. Enter the
-
-     **number of publishers or subscribers** you want to create on that specific machine17.
+1. **Add a Message Class**: Click the \+ button. A dropdown will appear with all message types defined in  
+   MsgDefs.csv. Select one to add it to the test scenario.  
+2. **Configure Parameters**: For each message class you add, a collapsible header will appear. Click it to expand the settings:  
+   * **Disabled**: A checkbox to enable or disable testing for this specific message class. Unchecking it will create the publishers and subscribers across the network.  
+   * **Rate**: A slider to control how many messages per second each publisher will send (in Hz).  
+   * **Size**: A slider to set the approximate payload size (in bytes) of each message.  
+   * **Pubs/Subs**: These rows are for assigning work. For both publishers ("Pubs") and subscribers ("Subs"), you will see a series of input boxes. Each box corresponds to a discovered application instance. Enter the  
+     **number of publishers or subscribers** you want to create on that specific machine.
 
 ##### **Step 3: Monitoring and Assessing Performance**
 
@@ -69,8 +55,7 @@ The key to assessing performance is the **"Subscriber Stats"** window. This tabl
   * Idx: The index of the subscriber within that app (if there are multiple).  
   * Recv: Total number of messages received by this subscriber.  
   * Rate: The calculated rate of messages per second this subscriber is receiving.  
-  * Lost: The total number of messages this subscriber has missed, calculated by checking for gaps in the publisher's sequence number18.
-
+  * Lost: The total number of messages this subscriber has missed, calculated by checking for gaps in the publisher's sequence number.  
 * **How to Assess Performance**:  
   * **Verify Throughput**: The Rate column should closely match the Rate you set for publishers in the "Msg Setting" window. If the Rate is consistently lower, it indicates a bottleneck, which could be due to network saturation, high CPU load on the publisher or subscriber machine, or inefficient QoS settings.  
   * **Identify Reliability Issues**: The **Lost column is the most critical indicator of network problems**. For a reliable QoS configuration, this number should ideally be **0**.  
@@ -80,9 +65,7 @@ The key to assessing performance is the **"Subscriber Stats"** window. This tabl
 
 The
 
-**"Local Settings"** window provides a read-only summary of the settings currently active on the instance you are viewing, which is useful for verification19.
-
----
+**"Local Settings"** window provides a read-only summary of the settings currently active on the instance you are viewing, which is useful for verification.
 
 #### **2\. Using Pre-defined Message Types**
 
@@ -91,27 +74,22 @@ The application's behavior is heavily influenced by the message definitions in M
 * stat\_UVL1\_LI (**BestEffort, Volatile, KeepLast(1), ListenImmed**):  
   * **Use Case**: Simulates high-frequency, non-critical data like streaming sensor readings or video game character positions.  
   * **Performance Assessment**: Use this to find the raw throughput of your network. Since it's bestEffort, expect the Lost count to rise under heavy load. The goal is to see how high you can push the Rate before the Lost count becomes unacceptable for your application.  
-    ListenImmed means the subscriber processes data directly in the DDS callback thread, which is fast but can cause issues if processing is slow20202020.
-
+    ListenImmed means the subscriber processes data directly in the DDS callback thread, which is fast but can cause issues if processing is slow.  
 * cmd\_RTA\_P (**Reliable, TransientLocal, KeepAll, Poll**):  
   * **Use Case**: Simulates critical commands that must not be lost and must be available to applications that start later.  
   * **Performance Assessment**: This is a test of reliability. The  
-    Lost count should remain at 0\. TransientLocal durability and KeepAll history mean that a newly started subscriber will be flooded with all previously sent messages, which can be a stress test in itself21. The
-
-    Poll strategy means the main application thread is responsible for reading data, which can be safer but potentially slower than listening22222222.
-
+    Lost count should remain at 0\. TransientLocal durability and KeepAll history mean that a newly started subscriber will be flooded with all previously sent messages, which can be a stress test in itself. The  
+    Poll strategy means the main application thread is responsible for reading data, which can be safer but potentially slower than listening.  
 * stat\_RVL1\_LD (**Reliable, Volatile, KeepLast(1), ListenDefer**):  
   * **Use Case**: Simulates reliable state updates where only the most recent value is important (e.g., the current status of a device).  
   * **Performance Assessment**: Tests reliable delivery without the history overhead.  
-    ListenDefer is a hybrid strategy where the DDS thread just flags that data is available, and the main thread reads it later23232323. This can be a good balance between responsiveness and thread safety.
+    ListenDefer is a hybrid strategy where the DDS thread just flags that data is available, and the main thread reads it later. This can be a good balance between responsiveness and thread safety.
 
 The message types in MsgDefs.csv are predefined profiles designed to simulate various real-world data distribution scenarios by combining different DDS Quality of Service (QoS) and application-level reading strategies.
 
 The naming convention generally follows this pattern:
 
 \<Use Case\>\_\<Reliability\>\<Durability\>\<History\>\<HistoryDepth\>\_\<ReadStrategy\>
-
----
 
 #### **1\. Command Messages (cmd\_\*)**
 
@@ -122,9 +100,9 @@ These message types simulate critical, one-time commands or events where every s
   * **Durability**: transientLocal \- The DDS service persists the data, so a newly started subscriber will receive messages that were sent before it launched.  
   * **History**: keepAll \- Every message sent is kept in history for late joiners.  
 * **Variants**:  
-  * cmd\_RTA\_P: Uses a **Poll** (\_P) reading strategy, where the subscriber's main loop periodically checks for new data1.  
-  * cmd\_RTA\_LI: Uses a **ListenImmed** (\_LI) strategy, where the subscriber processes data immediately within the DDS listener's callback thread upon arrival2.  
-  * cmd\_RTA\_LD: Uses a **ListenDefer** (\_LD) strategy, where the DDS listener's callback only sets a flag, and the main loop polls for data only when that flag is set3.
+  * cmd\_RTA\_P: Uses a **Poll** (\_P) reading strategy, where the subscriber's main loop periodically checks for new data.  
+  * cmd\_RTA\_LI: Uses a **ListenImmed** (\_LI) strategy, where the subscriber processes data immediately within the DDS listener's callback thread upon arrival.  
+  * cmd\_RTA\_LD: Uses a **ListenDefer** (\_LD) strategy, where the DDS listener's callback only sets a flag, and the main loop polls for data only when that flag is set.
 
 #### **2\. Infrequent, Reliable State Updates (stat\_RVL1\_\*)**
 
@@ -135,9 +113,9 @@ These types simulate important status updates where only the most recent value i
   * **Durability**: volatile \- Messages are not persisted for late joiners; only currently active subscribers receive them.  
   * **History**: keepLast with a **Depth** of 1 \- Only the single most recent message is stored and delivered.  
 * **Variants**:  
-  * stat\_RVL1\_P: Poll-based reading strategy4.  
-  * stat\_RVL1\_LI: Immediate listener-based reading strategy5.  
-  * stat\_RVL1\_LD: Deferred listener-based reading strategy6.
+  * stat\_RVL1\_P: Poll-based reading strategy.  
+  * stat\_RVL1\_LI: Immediate listener-based reading strategy.  
+  * stat\_RVL1\_LD: Deferred listener-based reading strategy.
 
 ### **3\. Frequent, Unreliable State Updates (stat\_UVL1\_\*)**
 
@@ -148,21 +126,21 @@ These types simulate high-frequency telemetry or data streams (like sensor data 
   * **Durability**: volatile \- Messages are not persisted for late joiners.  
   * **History**: keepLast with a **Depth** of 1 \- Only the most recent value is relevant.  
 * **Variants**:  
-  * stat\_UVL1\_P: Poll-based reading strategy7.  
-  * stat\_UVL1\_LI: Immediate listener-based reading strategy8.  
-  * stat\_UVL1\_LD: Deferred listener-based reading strategy9.
+  * stat\_UVL1\_P: Poll-based reading strategy.  
+  * stat\_UVL1\_LI: Immediate listener-based reading strategy.  
+  * stat\_UVL1\_LD: Deferred listener-based reading strategy.
 
 #### **4\. "Strange" Event Messages (strange\_RTA\_\*)**
 
-This category is a deliberate test case to highlight a common misuse of DDS settings10. It uses the same "command" QoS profile but is intended to simulate a stream of frequent events.
+This category is a deliberate test case to highlight a common misuse of DDS settings. It uses the same "command" QoS profile but is intended to simulate a stream of frequent events.
 
 * **QoS Profile (RTA)**:  
   * **Reliability**: reliable  
   * **Durability**: transientLocal  
   * **History**: keepAll  
 * **Test Purpose**: This profile is designed to show what happens when you use settings meant for one-shot commands for a continuous stream of events. A late-joining subscriber will be  
-   **flooded with the entire history of every message ever sent**, which can cause a massive network spike and overwhelm the application11. This is useful for testing the robustness of a system against such data bursts.  
-* **Variants**: It includes \_P, \_LI, and \_LD reading strategies12.
+  **flooded with the entire history of every message ever sent**, which can cause a massive network spike and overwhelm the application. This is useful for testing the robustness of a system against such data bursts.  
+* **Variants**: It includes \_P, \_LI, and \_LD reading strategies.
 
 #### **5\. Miscellaneous Test Cases**
 
@@ -177,8 +155,6 @@ These are additional profiles for testing specific QoS combinations.
 * RTA\_LD:  
   * **Profile**: Reliable, transientLocal, KeepAll, with a **HistoryDepth** of 3, ListenDefer.  
   * **Test Purpose**: This is nearly identical to cmd\_RTA\_LD. The HistoryDepth of 3 is technically ignored by the DDS service when the History kind is set to KeepAll, but this profile can be used to verify that the implementation behaves as expected.
-
----
 
 #### **3\. Defining New Message Types**
 
@@ -197,4 +173,96 @@ You can easily define new message types to test different QoS configurations wit
 
 Your new message type will now be available for selection when you click the
 
-\+ button in the **"Msg Setting"** window24, allowing you to immediately use it in your tests.
+\+ button in the **"Msg Setting"** window, allowing you to immediately use it in your tests.
+
+# **Interpretting the data**
+
+## **Lost field**
+
+"Lost" message indicator is entirely dependent on the **Reliability** Quality of Service (QoS) setting of the message type you are testing.
+
+Here is a breakdown of which message types you should monitor for losses as a sign of a problem versus those where losses are an expected part of the performance trade-off.
+
+### **"Lost" as an Indicator of a Serious Problem**
+
+The "Lost" indicator is most meaningful when testing message types configured with **Reliable** reliability. For these types, the DDS middleware guarantees that all messages will be delivered.
+
+If the "Lost" counter increases for a Reliable message type, it signifies that the DDS reliability protocol has failed, which could be due to:
+
+* Extreme network congestion or packet loss where even re-transmissions are failing.  
+* DDS resource limits being exhausted (e.g., buffers overflowing).  
+* A misconfiguration in the network or DDS settings.
+
+**For the following message types, the "Lost" count should be 0. Any other value indicates a problem worth investigating:**
+
+* **Command Messages**: cmd\_RTA\_P, cmd\_RTA\_LI, cmd\_RTA\_LD  
+* **Infrequent, Reliable State Updates**: stat\_RVL1\_P, stat\_RVL1\_LI, stat\_RVL1\_LD  
+* **"Strange" Event Messages**: strange\_RTA\_P, strange\_RTA\_LI, strange\_RTA\_LD  
+* **Miscellaneous Reliable Tests**: RVA\_P and RTA\_LD
+
+**Note**: The application's Readme.md mentions that the "Lost" count might increase if a publisher is removed and re-added while the subscriber remains alive. This is an artifact of the simple sequence number check and not necessarily a network failure. True failures are when the "Lost" count increases during a stable test run.
+
+### **"Lost" as an Expected Behavior for Performance Tuning**
+
+You should expect the "Lost" counter to increase as a normal behavior when testing message types configured with **BestEffort** reliability. This QoS setting instructs DDS to send data without guaranteeing its delivery, prioritizing low latency and reduced network overhead over reliability.
+
+For these types, the "Lost" indicator is not a sign of failure but a metric for **performance characterization**. The goal is to stress the network by increasing the message rate and size to see how many messages are dropped. This helps you understand the practical limits of your network for high-throughput, non-critical data.
+
+**For the following message types, a non-zero "Lost" count is expected, especially under high load:**
+
+* **Frequent, Unreliable State Updates**: stat\_UVL1\_P, stat\_UVL1\_LI, stat\_UVL1\_LD  
+* **Miscellaneous BestEffort Test**: UTL9\_LI
+
+When using these profiles, you are not asking "Did I lose any messages?" but rather "**How many** messages am I losing at this rate and size, and is that acceptable for my application?"
+
+Here is a guide on how to interpret the statistics in the **"Subscriber Stats"** window to identify different kinds of network and system performance issues.
+
+The key to diagnosing problems is to compare the statistics you see—primarily the **Rate** and **Lost** columns—against the test parameters you configured in the "Msg Setting" window and the Quality of Service (QoS) profile of the message type being tested.
+
+### **Understanding the Key Metrics**
+
+* **Rate**: This column shows the measured throughput in messages per second that a subscriber is actually receiving. This is your primary indicator for **performance and bottlenecks**.  
+* **Lost**: This column shows the number of messages that were sent by a publisher but never received by the subscriber. It's calculated by detecting gaps in a sequence number embedded in each message. This is your primary indicator for **network reliability and data loss**.
+
+### **How to Identify Specific Problems**
+
+By observing how these metrics behave under different test conditions, you can diagnose several common issues.
+
+#### **1\. Network Saturation or Bottleneck**
+
+This problem occurs when you are trying to send more data than your network infrastructure (or a specific machine's network card) can handle.
+
+* **How to Identify It**:  
+  * The measured **Rate** in the "Subscriber Stats" window is **consistently lower** than the Rate you set for the publisher in the "Msg Setting" window.  
+  * The Lost counter may or may not be high, but the key symptom is the **unachieved throughput**.  
+* **Example**: You configure a publisher to send at 1000 Hz, but the subscriber's Rate never goes above 750 Hz, even on a BestEffort message.  
+* **What It Means**: You have found the maximum throughput for that data type on your network. The bottleneck could be a slow network switch, a Wi-Fi limitation, or the processing capacity of the sending or receiving computer.
+
+#### **2\. Unreliable Network / Packet Loss**
+
+This problem points to issues with the physical network layer, such as a faulty cable, a congested switch, or poor Wi-Fi signal.
+
+* **How to Identify It**:  
+  * The **Lost** counter **increases rapidly**. The significance of this depends on the message's **Reliability QoS**.  
+* **Example & Interpretation**:  
+  * **Using BestEffort (e.g., stat\_UVL1\_LI)**: A rising Lost count is **expected** as you increase the load. This test helps you quantify your network's physical reliability. The trouble isn't that messages are lost, but *how many* are lost at a given rate.  
+  * **Using Reliable (e.g., cmd\_RTA\_P)**: A rising Lost count is a **critical failure**. It means your network is so unreliable that even the DDS re-transmission protocol is failing. This indicates a severe underlying network health problem that needs to be fixed.
+
+#### **3\. System Overload (CPU Lag)**
+
+This issue occurs when the subscriber application itself cannot process incoming messages fast enough, causing its internal DDS buffers to overflow.
+
+* **How to Identify It**:  
+  * One specific subscriber (or all subscribers on one machine) shows a **lower Rate and/or a higher Lost count** compared to identical subscribers on other machines.  
+  * This is especially common when using the **ListenImmed** read strategy, as slow processing in the callback can block the DDS receive thread.  
+* **Example**: You have five subscribers on five different machines. Four show a Rate of 990 Hz with 0 Lost. The fifth, on a less powerful machine, shows a Rate of 800 Hz and a steadily increasing Lost count.  
+* **What It Means**: The bottleneck is not the network, but the CPU or processing capacity of the struggling machine. You can confirm this by checking the CPU usage of the DdsPerfTest.exe process on that machine.
+
+#### **4\. QoS Misconfiguration**
+
+The stats can also reveal when you have chosen the wrong QoS settings for your use case, even if the network is perfectly healthy.
+
+* **How to Identify It**:  
+  * A newly started subscriber is immediately overwhelmed with a massive number of messages.  
+* **Example**: You use the strange\_RTA\_P message type. You start a new application instance, and its subscriber's Recv count instantly jumps to a very high number, potentially causing the app to freeze.  
+* **What It Means**: The stats are showing the effect of combining Durability: transientLocal and History: keepAll. This profile forces the DDS service to deliver the entire history of messages to any new subscriber, which can be disastrous for high-frequency event streams. The test successfully demonstrated that this is the wrong QoS for that type of data.
