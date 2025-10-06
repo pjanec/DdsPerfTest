@@ -160,6 +160,11 @@ copy /y *.ini $(TargetDir)</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="SubsStatsMgr.cpp" />
+    <ClCompile Include="SysMonitor.cpp" />
+    <ClCompile Include="SysMonitorView.cpp" />
+    <ClCompile Include="tinyxml2\tinyxml2.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="TopicRW.cpp" />
     <ClCompile Include="Subscriber.cpp" />
   </ItemGroup>
@@ -192,6 +197,9 @@ copy /y *.ini $(TargetDir)</Command>
     <ClInclude Include="Publisher.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SubsStatsMgr.h" />
+    <ClInclude Include="SysMonitor.h" />
+    <ClInclude Include="SysMonitorView.h" />
+    <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="TopicRW.h" />
     <ClInclude Include="SharedData.h" />
     <ClInclude Include="Subscriber.h" />

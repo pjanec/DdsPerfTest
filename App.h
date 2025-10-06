@@ -4,6 +4,8 @@
 #include <memory>
 #include "MsgDef.h"
 #include "SharedData.h"
+#include "SysMonitor.h"
+#include "SysMonitorView.h"
 
 namespace DdsPerfTest
 {
@@ -41,6 +43,9 @@ public:
 	bool WantsQuit() const { return _wantsQuit; }
 	int GetSubsStatsWriter() const;
 
+	std::shared_ptr<SysMonitor> GetSysMonitor() { return _sysMonitor; }
+	float& GetMonitorIntervalSec() { return _monitorIntervalSec; }
+
 
 protected:
 	void Init();
@@ -49,6 +54,8 @@ protected:
 
 	void DrawAppPanel();
 
+	void SaveLocalSettings();
+	void LoadLocalSettings();
 
 	void OnSharedDataReceived(const SharedData& data);
 	void OnAppsFound(const std::vector<AppId>& apps);
@@ -68,6 +75,10 @@ protected:
 	std::shared_ptr<MsgEdit> _msgEdit;
 	std::shared_ptr<SubsStatsMgr> _subsStatsMgr;
 	std::shared_ptr<CommandMgr> _commandMgr;
+
+	std::shared_ptr<SysMonitor> _sysMonitor;
+	std::shared_ptr<SysMonitorView> _sysMonitorView;
+	float _monitorIntervalSec = 1.0f; // Monitoring interval in seconds
 
 
 };

@@ -72,5 +72,16 @@ struct Command
 };
 #pragma keylist Command
 
+// Published by the monitor instance on each computer.
+struct SystemMonitorSample
+{
+    string computerName;
+    long long timestampUtc; // Nanoseconds since UTC epoch
+    float cpuUsagePercent;
+    float memoryUsageMb;    // Available memory
+    float networkUsageMbps; // Megabits per second
+};
+#pragma keylist SystemMonitorSample computerName
+
 };
 

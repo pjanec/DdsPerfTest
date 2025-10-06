@@ -50,6 +50,9 @@
     <ClCompile Include="MsgEdit.cpp" />
     <ClCompile Include="SubsStatsMgr.cpp" />
     <ClCompile Include="CommandMgr.cpp" />
+    <ClCompile Include="SysMonitor.cpp" />
+    <ClCompile Include="SysMonitorView.cpp" />
+    <ClCompile Include="tinyxml2\tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h">
@@ -114,6 +117,9 @@
     <ClInclude Include="MsgEdit.h" />
     <ClInclude Include="SubsStatsMgr.h" />
     <ClInclude Include="CommandMgr.h" />
+    <ClInclude Include="SysMonitor.h" />
+    <ClInclude Include="SysMonitorView.h" />
+    <ClInclude Include="tinyxml2\tinyxml2.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="json5\json5.natvis">

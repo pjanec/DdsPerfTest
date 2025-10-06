@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <sstream>
 #include "App.h"
 #include "imgui.h"
 #include "SharedData.h"
@@ -64,18 +67,30 @@ void App::Init()
 	_commandMgr = std::make_shared<CommandMgr>(this);
 	_commandMgr->OnCommand = [this](const Command& cmd) { ProcessCommand(cmd); };
 
+	_sysMonitor = std::make_shared<SysMonitor>(this);
+	_sysMonitorView = std::make_shared<SysMonitorView>(this);
+	LoadLocalSettings();
+
+	if (_sysMonitor && _sysMonitor->IsMonitorInstance())
+	{
+		_sysMonitor->SetSampleInterval((int)(_monitorIntervalSec * 1000.0f));
+	}
+
 	// we need to manually enable the settings on start to allow editing the settings before
 	_dataMgr->GetLocal().Disabled = true;
 }
 
 void App::Deinit()
 {
+	SaveLocalSettings();
 	_commandMgr = nullptr;
 	_allMsgCtrl = nullptr;
 	_subsStatsMgr = nullptr;
 	_appScan = nullptr;
 	_dataMgr = nullptr;
 	_particMgr = nullptr;
+	_sysMonitor = nullptr;
+	_sysMonitorView = nullptr;
 }
 
 void App::Tick()
@@ -84,6 +99,7 @@ void App::Tick()
 	_dataMgr->Tick();
 	_subsStatsMgr->Tick();
 	_commandMgr->Tick();
+	_sysMonitorView->Tick();
 	_dataMgr->SendAndSaveIfDirty();
 }
 
@@ -105,6 +121,11 @@ void App::DrawUI()
 	ImGui::Begin("Msg Setting");
 	_msgEdit->DrawUI();
 	ImGui::End();
+
+	if (_sysMonitorView)
+	{
+		_sysMonitorView->DrawUI();
+	}
 
 
 }
@@ -141,9 +162,6 @@ void App::DrawAppPanel()
 	{
 		_commandMgr->SendCommand(Command("KillAll"));
 	}
-
-
-
 }
 
 const AppId& App::GetAppId() const
@@ -240,6 +258,38 @@ void App::OnMsgEditChanged()
 	// msg edit has changed the local live data
 	
 	_dataMgr->SetDirty(); // to publish at the end of tick
+}
+
+void App::SaveLocalSettings()
+{
+	std::ofstream settingsFile("local_settings.ini");
+	if (settingsFile.is_open())
+	{
+		settingsFile << "RecordPerformance=" << (_sysMonitorView ? _sysMonitorView->IsRecordingEnabled() : false) << std::endl;
+		settingsFile << "MonitorIntervalSec=" << _monitorIntervalSec << std::endl;
+	}
+}
+
+void App::LoadLocalSettings()
+{
+	std::ifstream settingsFile("local_settings.ini");
+	if (!settingsFile.is_open()) return;
+	
+	std::string line;
+	while (std::getline(settingsFile, line))
+	{
+		std::istringstream iss(line);
+		std::string key, value;
+		if (std::getline(iss, key, '=') && std::getline(iss, value))
+		{
+			if (key == "RecordPerformance") {
+				if (_sysMonitorView) _sysMonitorView->SetRecordingEnabled(value == "1");
+			}
+			else if (key == "MonitorIntervalSec") {
+				_monitorIntervalSec = std::stof(value);
+			}
+		}
+	}
 }
 
 } // namespace DdsPerfTest

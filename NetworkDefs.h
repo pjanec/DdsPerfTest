@@ -192,6 +192,23 @@ extern const dds_topic_descriptor_t Net_Command_desc;
 #define Net_Command_free(d,o) \
 dds_sample_free ((d), &Net_Command_desc, (o))
 
+typedef struct Net_SystemMonitorSample
+{
+  char * computerName;
+  int64_t timestampUtc;
+  float cpuUsagePercent;
+  float memoryUsageMb;
+  float networkUsageMbps;
+} Net_SystemMonitorSample;
+
+extern const dds_topic_descriptor_t Net_SystemMonitorSample_desc;
+
+#define Net_SystemMonitorSample__alloc() \
+((Net_SystemMonitorSample*) dds_alloc (sizeof (Net_SystemMonitorSample)));
+
+#define Net_SystemMonitorSample_free(d,o) \
+dds_sample_free ((d), &Net_SystemMonitorSample_desc, (o))
+
 #ifdef __cplusplus
 }
 #endif
