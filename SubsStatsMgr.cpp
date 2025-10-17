@@ -27,8 +27,8 @@ namespace DdsPerfTest
 
 	void SubsStatsMgr::DrawSubsStats()
 	{
-		// show the stats in ImGui table (new style table) - increased column count to 7 for partition
-		if (ImGui::BeginTable("SubsStats", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
+		// show the stats in ImGui table (new style table) - increased column count to 8 for computer name
+		if (ImGui::BeginTable("SubsStats", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
 		{
 			// sort stats
 			std::vector<SubsStats> stats;
@@ -41,8 +41,9 @@ namespace DdsPerfTest
 				return false;
 				});
 
-			// header - added Partition column
+			// header - added Partition and Computer columns
 			ImGui::TableSetupColumn("Msg");
+			ImGui::TableSetupColumn("Computer");
 			ImGui::TableSetupColumn("App");
 			ImGui::TableSetupColumn("Idx");
 			ImGui::TableSetupColumn("Partition");  // NEW: Partition column
@@ -53,9 +54,18 @@ namespace DdsPerfTest
 
 			for (auto& s : stats)
 			{
+				const auto& apps = _app->GetApps();
+				std::string computerName = "[unknown]";
+				if (s.Key.AppIndex >= 0 && s.Key.AppIndex < (int)apps.size())
+				{
+					computerName = apps[s.Key.AppIndex].ComputerName;
+				}
+
 				ImGui::TableNextRow();
 				ImGui::TableNextColumn();
 				ImGui::Text("%s", s.Key.MsgName.c_str());
+				ImGui::TableNextColumn();
+				ImGui::Text("%s", computerName.c_str());
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Key.AppIndex);
 				ImGui::TableNextColumn();
