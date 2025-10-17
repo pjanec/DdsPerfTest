@@ -78,8 +78,9 @@ struct SystemMonitorSample
     string computerName;
     long long timestampUtc; // Nanoseconds since UTC epoch
     float cpuUsagePercent;
-    float memoryUsageMb;    // Available memory
-    float networkUsageMbps; // Megabits per second
+    float memoryUsageMb;    // Used memory
+    float networkSentMbps;     // Megabits per second sent
+    float networkReceivedMbps; // Megabits per second received
 };
 #pragma keylist SystemMonitorSample computerName
 

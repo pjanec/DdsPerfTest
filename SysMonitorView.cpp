@@ -112,12 +112,13 @@ void SysMonitorView::DrawUI()
 
     ImGui::Separator();
 
-    if (ImGui::BeginTable("PerfStatsTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    if (ImGui::BeginTable("PerfStatsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
         ImGui::TableSetupColumn("Computer Name");
         ImGui::TableSetupColumn("CPU (%)");
         ImGui::TableSetupColumn("Mem Used (MB)");
-        ImGui::TableSetupColumn("Network (Mbps)");
+        ImGui::TableSetupColumn("Net Sent (Mbps)");
+        ImGui::TableSetupColumn("Net Recv (Mbps)");
         ImGui::TableHeadersRow();
 
         for (const auto& [name, history] : _historySamples)
@@ -144,12 +145,19 @@ void SysMonitorView::DrawUI()
             if (ImGui::Selectable(memStr.str().c_str(), false))
                 OpenChartWindow(name, PerfMetric::Memory);
             
-            // Network Column - clickable
+            // Network Sent Column - clickable
             ImGui::TableSetColumnIndex(3);
-            std::stringstream netStr;
-            netStr << std::fixed << std::setprecision(3) << sample.networkUsageMbps;
-            if (ImGui::Selectable(netStr.str().c_str(), false))
-                OpenChartWindow(name, PerfMetric::Network);
+            std::stringstream sentStr;
+            sentStr << std::fixed << std::setprecision(3) << sample.networkSentMbps;
+            if (ImGui::Selectable(sentStr.str().c_str(), false))
+                OpenChartWindow(name, PerfMetric::NetworkSent);
+            
+            // Network Received Column - clickable
+            ImGui::TableSetColumnIndex(4);
+            std::stringstream recvStr;
+            recvStr << std::fixed << std::setprecision(3) << sample.networkReceivedMbps;
+            if (ImGui::Selectable(recvStr.str().c_str(), false))
+                OpenChartWindow(name, PerfMetric::NetworkReceived);
         }
         ImGui::EndTable();
     }
@@ -170,7 +178,7 @@ void SysMonitorView::OpenCsvFile()
     _csvFile.seekp(0, std::ios::end);
     if (_csvFile.tellp() == 0)
     {
-        _csvFile << "TimestampUTC,ComputerName,CPUUsagePercent,MemoryUsedMB,NetworkUsageMbps\n";
+        _csvFile << "TimestampUTC,ComputerName,CPUUsagePercent,MemoryUsedMB,NetworkSentMbps,NetworkReceivedMbps\n";
     }
 }
 
@@ -219,7 +227,8 @@ void SysMonitorView::WriteToCsv(const Net_SystemMonitorSample& sample)
         << sample.computerName << ","
         << std::fixed << std::setprecision(2) << sample.cpuUsagePercent << ","
         << std::fixed << std::setprecision(0) << sample.memoryUsageMb << ","
-        << std::fixed << std::setprecision(3) << sample.networkUsageMbps << "\n";
+        << std::fixed << std::setprecision(3) << sample.networkSentMbps << ","
+        << std::fixed << std::setprecision(3) << sample.networkReceivedMbps << "\n";
 }
 
 void SysMonitorView::OpenChartWindow(const std::string& computerName, PerfMetric metric)
@@ -246,7 +255,8 @@ void SysMonitorView::OpenChartWindow(const std::string& computerName, PerfMetric
     {
         case PerfMetric::CPU: metricName = "CPU"; break;
         case PerfMetric::Memory: metricName = "Memory"; break;
-        case PerfMetric::Network: metricName = "Network"; break;
+        case PerfMetric::NetworkSent: metricName = "Network Sent"; break;
+        case PerfMetric::NetworkReceived: metricName = "Network Received"; break;
     }
     
     std::stringstream windowId;
@@ -315,7 +325,8 @@ void SysMonitorView::DrawChartWindows()
                     {
                     case PerfMetric::CPU:     value = sample.cpuUsagePercent; break;
                     case PerfMetric::Memory:  value = sample.memoryUsageMb;   break;
-                    case PerfMetric::Network: value = sample.networkUsageMbps; break;
+                    case PerfMetric::NetworkSent: value = sample.networkSentMbps; break;
+                    case PerfMetric::NetworkReceived: value = sample.networkReceivedMbps; break;
                     }
                     plotData.push_back(value);
                     if (chart.AutoScale)
@@ -332,7 +343,8 @@ void SysMonitorView::DrawChartWindows()
                 {
                 case PerfMetric::CPU:     latestValueStr = std::format("{:.2f} %%", plotData.back()); break;
                 case PerfMetric::Memory:  latestValueStr = std::format("{:.0f} MB Used", plotData.back()); break;
-                case PerfMetric::Network: latestValueStr = std::format("{:.3f} Mbps", plotData.back()); break;
+                case PerfMetric::NetworkSent: latestValueStr = std::format("{:.3f} Mbps Sent", plotData.back()); break;
+                case PerfMetric::NetworkReceived: latestValueStr = std::format("{:.3f} Mbps Received", plotData.back()); break;
                 }
             }
 

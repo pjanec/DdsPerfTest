@@ -15,7 +15,8 @@ namespace DdsPerfTest
     {
         CPU,
         Memory,
-        Network
+        NetworkSent,
+        NetworkReceived
     };
 
     struct ChartWindowState

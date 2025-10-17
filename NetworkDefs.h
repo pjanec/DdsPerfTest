@@ -198,7 +198,8 @@ typedef struct Net_SystemMonitorSample
   int64_t timestampUtc;
   float cpuUsagePercent;
   float memoryUsageMb;
-  float networkUsageMbps;
+  float networkSentMbps;
+  float networkReceivedMbps;
 } Net_SystemMonitorSample;
 
 extern const dds_topic_descriptor_t Net_SystemMonitorSample_desc;

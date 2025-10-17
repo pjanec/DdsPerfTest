@@ -77,10 +77,10 @@ void SysMonitor::MonitorThreadFunc()
     Sleep(1000); // Initial sleep for PDH counters
     while (!_stopThread)
     {
-        float cpu = 0.0f, mem = 0.0f, net = 0.0f;
-        if (CollectPerformanceData(cpu, mem, net))
+        float cpu = 0.0f, mem = 0.0f, netSent = 0.0f, netReceived = 0.0f;
+        if (CollectPerformanceData(cpu, mem, netSent, netReceived))
         {
-            PublishPerformanceData(cpu, mem, net);
+            PublishPerformanceData(cpu, mem, netSent, netReceived);
         }
         Sleep(_sampleIntervalMs);
     }
@@ -106,28 +106,41 @@ void SysMonitor::InitializePdh()
 
     if (!_networkInterfaceName.empty())
     {
-        std::wstring pdhPath = L"\\Network Interface(" + std::wstring(_networkInterfaceName.begin(), _networkInterfaceName.end()) + L")\\Bytes Total/sec";
-        PdhAddCounter(_pdhQuery, pdhPath.c_str(), 0, &_netCounter);
+        std::wstring basePath = L"\\Network Interface(" + std::wstring(_networkInterfaceName.begin(), _networkInterfaceName.end()) + L")\\";
+        std::wstring sentPath = basePath + L"Bytes Sent/sec";
+        std::wstring receivedPath = basePath + L"Bytes Received/sec";
+
+        PdhAddCounter(_pdhQuery, sentPath.c_str(), 0, &_netSentCounter);
+        PdhAddCounter(_pdhQuery, receivedPath.c_str(), 0, &_netReceivedCounter);
     }
     
     PdhCollectQueryData(_pdhQuery);
 }
 
-bool SysMonitor::CollectPerformanceData(float& cpu, float& mem, float& net)
+bool SysMonitor::CollectPerformanceData(float& cpu, float& mem, float& netSent, float& netReceived)
 {
     if (PdhCollectQueryData(_pdhQuery) != ERROR_SUCCESS) return false;
     PDH_FMT_COUNTERVALUE val;
 
     if (PdhGetFormattedCounterValue(_cpuCounter, PDH_FMT_DOUBLE, NULL, &val) == ERROR_SUCCESS) cpu = (float)val.doubleValue;
     if (PdhGetFormattedCounterValue(_memCounter, PDH_FMT_DOUBLE, NULL, &val) == ERROR_SUCCESS) mem = (float)val.doubleValue;
-    if (_netCounter && PdhGetFormattedCounterValue(_netCounter, PDH_FMT_DOUBLE, NULL, &val) == ERROR_SUCCESS)
+
+    // Query sent traffic
+    if (_netSentCounter && PdhGetFormattedCounterValue(_netSentCounter, PDH_FMT_DOUBLE, NULL, &val) == ERROR_SUCCESS)
     {
-        net = (float)(val.doubleValue * 8.0 / (1024.0 * 1024.0)); // Bytes/sec to Mbps
+        netSent = (float)(val.doubleValue * 8.0 / (1024.0 * 1024.0)); // Bytes/sec to Mbps
     }
+
+    // Query received traffic
+    if (_netReceivedCounter && PdhGetFormattedCounterValue(_netReceivedCounter, PDH_FMT_DOUBLE, NULL, &val) == ERROR_SUCCESS)
+    {
+        netReceived = (float)(val.doubleValue * 8.0 / (1024.0 * 1024.0)); // Bytes/sec to Mbps
+    }
+
     return true;
 }
 
-void SysMonitor::PublishPerformanceData(float cpu, float mem, float net)
+void SysMonitor::PublishPerformanceData(float cpu, float mem, float netSent, float netReceived)
 {
     Net_SystemMonitorSample sample = { 0 };
     auto now = std::chrono::system_clock::now();
@@ -139,7 +152,8 @@ void SysMonitor::PublishPerformanceData(float cpu, float mem, float net)
     } else {
         sample.memoryUsageMb = 0.0f;
     }
-    sample.networkUsageMbps = net;
+    sample.networkSentMbps = netSent;
+    sample.networkReceivedMbps = netReceived;
     dds_write(_writer, &sample);
 }
 

@@ -25,7 +25,7 @@ namespace DdsPerfTest
         void MonitorThreadFunc();
 
         void InitializePdh();
-        bool CollectPerformanceData(float& cpu, float& mem, float& net);
+        bool CollectPerformanceData(float& cpu, float& mem, float& netSent, float& netReceived);
         void ClosePdh();
 
         std::string FindNetworkInterfaceToMonitor();
@@ -33,7 +33,7 @@ namespace DdsPerfTest
         std::string FindBusiestNetworkInterface();
         std::string GetInterfaceNameFromIp(const std::string& ipAddress);
 
-        void PublishPerformanceData(float cpu, float mem, float net);
+        void PublishPerformanceData(float cpu, float mem, float netSent, float netReceived);
         
         App* _app;
         HANDLE _singletonMutex = NULL;
@@ -50,7 +50,8 @@ namespace DdsPerfTest
         PDH_HQUERY _pdhQuery = NULL;
         PDH_HCOUNTER _cpuCounter = NULL;
         PDH_HCOUNTER _memCounter = NULL;
-        PDH_HCOUNTER _netCounter = NULL;
+        PDH_HCOUNTER _netSentCounter = NULL;
+        PDH_HCOUNTER _netReceivedCounter = NULL;
         std::string _networkInterfaceName;
         float _totalMemoryMb = 0.0f;
     };
