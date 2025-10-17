@@ -49,6 +49,7 @@ public:
 
 protected:
 	void Init();
+	void LoadVersion();
 	void Deinit();
 	void ProcessCommand( const Command& cmd );
 
@@ -66,6 +67,7 @@ protected:
 	int _appIndex = -1; // index in the list of apps
 	bool _useHighRateTick = false;
 	bool _wantsQuit = false;
+	std::string _version;
 
 	std::vector<MsgDef> _msgDefs;
 	std::shared_ptr<ParticMgr> _particMgr;

@@ -36,6 +36,15 @@ App::~App()
 	Deinit();
 }
 
+void App::LoadVersion()
+{
+	_version.clear();
+	std::ifstream vf("version.txt");
+	if (!vf.is_open()) return;
+	std::getline(vf, _version);
+	while (!_version.empty() && (_version.back()=='\r' || _version.back()=='\n' || _version.back()==' ' || _version.back()=='\t')) _version.pop_back();
+}
+
 void App::Reset()
 {
 	Deinit();
@@ -45,6 +54,8 @@ void App::Reset()
 void App::Init()
 {
 	_msgDefs = MsgDef::ReadListFromFile("MsgDefs.csv");
+
+	LoadVersion();
 
 	_particMgr = std::make_shared<ParticMgr>(this);
 	
@@ -190,7 +201,8 @@ void App::UpdateAppIndex( const SharedData& settings )
 	_appIndex = index;
 
 	// set window title
-	std::string title = "DdsPerfTest - " + _appId.ComputerName + " - " + std::to_string(_appIndex);
+	std::string versionPart = _version.empty() ? "" : (" v" + _version);
+	std::string title = "DdsPerfTest" + versionPart + " - " + _appId.ComputerName + " - " + std::to_string(_appIndex);
 	SetConsoleTitleA(title.c_str());
 	SetWindowTextA(g_hWnd, title.c_str());
 }

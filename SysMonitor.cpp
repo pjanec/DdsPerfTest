@@ -50,6 +50,10 @@ SysMonitor::~SysMonitor()
 void SysMonitor::Initialize()
 {
     if (!_isMonitorInstance) return;
+    ULONGLONG totalMemoryKb;
+    if (GetPhysicallyInstalledSystemMemory(&totalMemoryKb)) {
+        _totalMemoryMb = (float)totalMemoryKb / 1024.0f;
+    }
     _participant = _app->GetParticipant(0);
 
     _topic = dds_create_topic(_participant, &Net_SystemMonitorSample_desc, "SystemMonitorSample", NULL, NULL);
@@ -130,7 +134,11 @@ void SysMonitor::PublishPerformanceData(float cpu, float mem, float net)
     sample.timestampUtc = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sample.computerName = (char*)_app->GetAppId().ComputerName.c_str();
     sample.cpuUsagePercent = cpu;
-    sample.memoryUsageMb = mem;
+    if (_totalMemoryMb > 0.0f) {
+        sample.memoryUsageMb = _totalMemoryMb - mem;
+    } else {
+        sample.memoryUsageMb = 0.0f;
+    }
     sample.networkUsageMbps = net;
     dds_write(_writer, &sample);
 }

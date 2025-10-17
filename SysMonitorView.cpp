@@ -116,7 +116,7 @@ void SysMonitorView::DrawUI()
     {
         ImGui::TableSetupColumn("Computer Name");
         ImGui::TableSetupColumn("CPU (%)");
-        ImGui::TableSetupColumn("Mem Avail (MB)");
+        ImGui::TableSetupColumn("Mem Used (MB)");
         ImGui::TableSetupColumn("Network (Mbps)");
         ImGui::TableHeadersRow();
 
@@ -170,7 +170,7 @@ void SysMonitorView::OpenCsvFile()
     _csvFile.seekp(0, std::ios::end);
     if (_csvFile.tellp() == 0)
     {
-        _csvFile << "TimestampUTC,ComputerName,CPUUsagePercent,MemoryAvailableMB,NetworkUsageMbps\n";
+        _csvFile << "TimestampUTC,ComputerName,CPUUsagePercent,MemoryUsedMB,NetworkUsageMbps\n";
     }
 }
 
@@ -331,7 +331,7 @@ void SysMonitorView::DrawChartWindows()
                 switch (chart.Metric)
                 {
                 case PerfMetric::CPU:     latestValueStr = std::format("{:.2f} %%", plotData.back()); break;
-                case PerfMetric::Memory:  latestValueStr = std::format("{:.0f} MB", plotData.back()); break;
+                case PerfMetric::Memory:  latestValueStr = std::format("{:.0f} MB Used", plotData.back()); break;
                 case PerfMetric::Network: latestValueStr = std::format("{:.3f} Mbps", plotData.back()); break;
                 }
             }

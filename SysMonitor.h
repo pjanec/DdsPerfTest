@@ -52,5 +52,6 @@ namespace DdsPerfTest
         PDH_HCOUNTER _memCounter = NULL;
         PDH_HCOUNTER _netCounter = NULL;
         std::string _networkInterfaceName;
+        float _totalMemoryMb = 0.0f;
     };
 }

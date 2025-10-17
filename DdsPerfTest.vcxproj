@@ -212,6 +212,9 @@ copy /y *.ini $(TargetDir)</Command>
   <ItemGroup>
     <None Include="MsgDefs.csv" />
     <None Include="settings.csv" />
+    <None Include="version.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="TODO.txt" />
