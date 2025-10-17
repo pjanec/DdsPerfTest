@@ -195,6 +195,7 @@ dds_sample_free ((d), &Net_Command_desc, (o))
 typedef struct Net_SystemMonitorSample
 {
   char * computerName;
+  char * ipAddress;
   int64_t timestampUtc;
   float cpuUsagePercent;
   float memoryUsageMb;

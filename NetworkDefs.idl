@@ -76,6 +76,7 @@ struct Command
 struct SystemMonitorSample
 {
     string computerName;
+    string ipAddress;
     long long timestampUtc; // Nanoseconds since UTC epoch
     float cpuUsagePercent;
     float memoryUsageMb;    // Used memory

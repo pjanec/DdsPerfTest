@@ -27,8 +27,8 @@ namespace DdsPerfTest
 
 	void SubsStatsMgr::DrawSubsStats()
 	{
-		// show the stats in ImGui table (new style table) - increased column count to 8 for computer name
-		if (ImGui::BeginTable("SubsStats", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
+		// show the stats in ImGui table (new style table) - increased column count to 9 for IP address
+		if (ImGui::BeginTable("SubsStats", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
 		{
 			// sort stats
 			std::vector<SubsStats> stats;
@@ -41,9 +41,10 @@ namespace DdsPerfTest
 				return false;
 				});
 
-			// header - added Partition and Computer columns
+			// header - added Partition, Computer and IP columns
 			ImGui::TableSetupColumn("Msg");
 			ImGui::TableSetupColumn("Computer");
+			ImGui::TableSetupColumn("IP Address");
 			ImGui::TableSetupColumn("App");
 			ImGui::TableSetupColumn("Idx");
 			ImGui::TableSetupColumn("Partition");  // NEW: Partition column
@@ -66,6 +67,9 @@ namespace DdsPerfTest
 				ImGui::Text("%s", s.Key.MsgName.c_str());
 				ImGui::TableNextColumn();
 				ImGui::Text("%s", computerName.c_str());
+				ImGui::TableNextColumn();
+				const std::string& ipAddress = _app->GetIpAddress(computerName);
+				ImGui::Text("%s", ipAddress.c_str());
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Key.AppIndex);
 				ImGui::TableNextColumn();

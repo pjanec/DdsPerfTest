@@ -146,6 +146,7 @@ void SysMonitor::PublishPerformanceData(float cpu, float mem, float netSent, flo
     auto now = std::chrono::system_clock::now();
     sample.timestampUtc = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sample.computerName = (char*)_app->GetAppId().ComputerName.c_str();
+    sample.ipAddress = (char*)_monitoredIpAddress.c_str();
     sample.cpuUsagePercent = cpu;
     if (_totalMemoryMb > 0.0f) {
         sample.memoryUsageMb = _totalMemoryMb - mem;
@@ -162,12 +163,41 @@ void SysMonitor::ClosePdh()
     if (_pdhQuery) { PdhCloseQuery(_pdhQuery); _pdhQuery = NULL; }
 }
 
+std::string SysMonitor::GetIpFromInterfaceName(const std::string& interfaceName)
+{
+    ULONG bufferSize = 0;
+    GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &bufferSize);
+    if (bufferSize == 0) return "";
+
+    std::vector<BYTE> buffer(bufferSize);
+    IP_ADAPTER_ADDRESSES* pAddresses = (IP_ADAPTER_ADDRESSES*)buffer.data();
+    if (GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, NULL, pAddresses, &bufferSize) == NO_ERROR)
+    {
+        for (IP_ADAPTER_ADDRESSES* pAdapter = pAddresses; pAdapter != NULL; pAdapter = pAdapter->Next)
+        {
+            std::wstring wideDescription(pAdapter->Description);
+            std::string description(wideDescription.begin(), wideDescription.end());
+            if (interfaceName.find(description) != std::string::npos)
+            {
+                for (IP_ADAPTER_UNICAST_ADDRESS* pUnicast = pAdapter->FirstUnicastAddress; pUnicast != NULL; pUnicast = pUnicast->Next)
+                {
+                    char addrStr[INET_ADDRSTRLEN];
+                    getnameinfo(pUnicast->Address.lpSockaddr, pUnicast->Address.iSockaddrLength, addrStr, sizeof(addrStr), NULL, 0, NI_NUMERICHOST);
+                    return std::string(addrStr);
+                }
+            }
+        }
+    }
+    return "";
+}
+
 std::string SysMonitor::FindNetworkInterfaceToMonitor()
 {
     // Priority 1: Try to get from CycloneDDS config
     std::string interfaceIp = GetInterfaceFromCycloneConfig();
     if (!interfaceIp.empty())
     {
+        _monitoredIpAddress = interfaceIp;
         std::string interfaceName = GetInterfaceNameFromIp(interfaceIp);
         if (!interfaceName.empty())
         {
@@ -183,7 +213,12 @@ std::string SysMonitor::FindNetworkInterfaceToMonitor()
     }
 
     // Priority 2: Fallback to busiest interface
-    return FindBusiestNetworkInterface();
+    std::string busiestName = FindBusiestNetworkInterface();
+    if (!busiestName.empty())
+    {
+        _monitoredIpAddress = GetIpFromInterfaceName(busiestName);
+    }
+    return busiestName;
 }
 
 std::string SysMonitor::GetInterfaceFromCycloneConfig()

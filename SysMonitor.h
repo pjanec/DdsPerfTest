@@ -32,6 +32,7 @@ namespace DdsPerfTest
         std::string GetInterfaceFromCycloneConfig();
         std::string FindBusiestNetworkInterface();
         std::string GetInterfaceNameFromIp(const std::string& ipAddress);
+        std::string GetIpFromInterfaceName(const std::string& interfaceName);
 
         void PublishPerformanceData(float cpu, float mem, float netSent, float netReceived);
         
@@ -53,6 +54,7 @@ namespace DdsPerfTest
         PDH_HCOUNTER _netSentCounter = NULL;
         PDH_HCOUNTER _netReceivedCounter = NULL;
         std::string _networkInterfaceName;
+        std::string _monitoredIpAddress;
         float _totalMemoryMb = 0.0f;
     };
 }

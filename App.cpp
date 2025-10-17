@@ -36,6 +36,23 @@ App::~App()
 	Deinit();
 }
 
+void App::CacheIpAddress(const std::string& computerName, const std::string& ipAddress)
+{
+	_ipCache[computerName] = ipAddress;
+}
+
+const std::string& App::GetIpAddress(const std::string& computerName)
+{
+	auto it = _ipCache.find(computerName);
+	if (it != _ipCache.end())
+	{
+		return it->second;
+	}
+	// Return a default placeholder if not found
+	static const std::string notFound = "[...]";
+	return notFound;
+}
+
 void App::LoadVersion()
 {
 	_version.clear();

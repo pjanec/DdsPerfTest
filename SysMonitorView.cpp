@@ -52,6 +52,7 @@ void SysMonitorView::ReadSamples()
         if (infos[i].valid_data)
         {
             auto* sample = static_cast<Net_SystemMonitorSample*>(samples[i]);
+            _app->CacheIpAddress(sample->computerName, sample->ipAddress);
             auto& history = _historySamples[sample->computerName];
             history.push_back(*sample);
             
@@ -112,9 +113,10 @@ void SysMonitorView::DrawUI()
 
     ImGui::Separator();
 
-    if (ImGui::BeginTable("PerfStatsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    if (ImGui::BeginTable("PerfStatsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
         ImGui::TableSetupColumn("Computer Name");
+        ImGui::TableSetupColumn("IP Address");
         ImGui::TableSetupColumn("CPU (%)");
         ImGui::TableSetupColumn("Mem Used (MB)");
         ImGui::TableSetupColumn("Net Sent (Mbps)");
@@ -131,29 +133,33 @@ void SysMonitorView::DrawUI()
             ImGui::TableSetColumnIndex(0); 
             ImGui::Text("%s", name.c_str());
             
-            // CPU Column - clickable
+            // IP Address Column
             ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%s", sample.ipAddress);
+            
+            // CPU Column - clickable
+            ImGui::TableSetColumnIndex(2);
             std::stringstream cpuStr;
             cpuStr << std::fixed << std::setprecision(2) << sample.cpuUsagePercent;
             if (ImGui::Selectable(cpuStr.str().c_str(), false))
                 OpenChartWindow(name, PerfMetric::CPU);
             
             // Memory Column - clickable
-            ImGui::TableSetColumnIndex(2);
+            ImGui::TableSetColumnIndex(3);
             std::stringstream memStr;
             memStr << std::fixed << std::setprecision(0) << sample.memoryUsageMb;
             if (ImGui::Selectable(memStr.str().c_str(), false))
                 OpenChartWindow(name, PerfMetric::Memory);
             
             // Network Sent Column - clickable
-            ImGui::TableSetColumnIndex(3);
+            ImGui::TableSetColumnIndex(4);
             std::stringstream sentStr;
             sentStr << std::fixed << std::setprecision(3) << sample.networkSentMbps;
             if (ImGui::Selectable(sentStr.str().c_str(), false))
                 OpenChartWindow(name, PerfMetric::NetworkSent);
             
             // Network Received Column - clickable
-            ImGui::TableSetColumnIndex(4);
+            ImGui::TableSetColumnIndex(5);
             std::stringstream recvStr;
             recvStr << std::fixed << std::setprecision(3) << sample.networkReceivedMbps;
             if (ImGui::Selectable(recvStr.str().c_str(), false))
@@ -178,7 +184,7 @@ void SysMonitorView::OpenCsvFile()
     _csvFile.seekp(0, std::ios::end);
     if (_csvFile.tellp() == 0)
     {
-        _csvFile << "TimestampUTC,ComputerName,CPUUsagePercent,MemoryUsedMB,NetworkSentMbps,NetworkReceivedMbps\n";
+        _csvFile << "TimestampUTC,ComputerName,IPAddress,CPUUsagePercent,MemoryUsedMB,NetworkSentMbps,NetworkReceivedMbps\n";
     }
 }
 
@@ -225,6 +231,7 @@ void SysMonitorView::WriteToCsv(const Net_SystemMonitorSample& sample)
 
     _csvFile << timestampStr << "," // Use the formatted string
         << sample.computerName << ","
+        << sample.ipAddress << ","
         << std::fixed << std::setprecision(2) << sample.cpuUsagePercent << ","
         << std::fixed << std::setprecision(0) << sample.memoryUsageMb << ","
         << std::fixed << std::setprecision(3) << sample.networkSentMbps << ","

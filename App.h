@@ -2,6 +2,8 @@
 #include "dds/dds.h"
 #include <vector>
 #include <memory>
+#include <map>
+#include <string>
 #include "MsgDef.h"
 #include "SharedData.h"
 #include "SysMonitor.h"
@@ -43,6 +45,9 @@ public:
 	bool WantsQuit() const { return _wantsQuit; }
 	int GetSubsStatsWriter() const;
 
+	void CacheIpAddress(const std::string& computerName, const std::string& ipAddress);
+	const std::string& GetIpAddress(const std::string& computerName);
+
 	std::shared_ptr<SysMonitor> GetSysMonitor() { return _sysMonitor; }
 	float& GetMonitorIntervalSec() { return _monitorIntervalSec; }
 
@@ -81,6 +86,8 @@ protected:
 	std::shared_ptr<SysMonitor> _sysMonitor;
 	std::shared_ptr<SysMonitorView> _sysMonitorView;
 	float _monitorIntervalSec = 1.0f; // Monitoring interval in seconds
+
+	std::map<std::string, std::string> _ipCache;
 
 
 };
