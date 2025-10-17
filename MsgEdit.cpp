@@ -165,10 +165,10 @@ namespace DdsPerfTest
             
             // Ensure both vectors are properly sized
             if (msgSpec.PublCnt.size() < _edited.Apps.size()) {
-                msgSpec.PublCnt.resize(_edited.Apps.size(), 0);
+            msgSpec.PublCnt.resize(_edited.Apps.size(), 0);
             }
             if (msgSpec.SubsCnt.size() < _edited.Apps.size()) {
-                msgSpec.SubsCnt.resize(_edited.Apps.size(), 0);
+            msgSpec.SubsCnt.resize(_edited.Apps.size(), 0);
             }
             
             // Calculate adaptive table height based on number of apps

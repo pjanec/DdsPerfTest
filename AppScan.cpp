@@ -52,6 +52,8 @@ namespace DdsPerfTest
 			});
 
 		OnScanFinished( _appIds );
+
+		dds_return_loan(reader, (void**)appIdPtrs, num);
 	}
 
 	void AppScan::PublishAppId(const AppId& appId)
