@@ -81,23 +81,23 @@ namespace DdsPerfTest
         for (int count : msgSpec.PublCnt) totalPubs += count;
         for (int count : msgSpec.SubsCnt) totalSubs += count;
         
-        // 1. Create the text that will be displayed to the user. This part is dynamic.
-        std::string visibleLabel = "Publishers & Subscribers";
-
-        // 2. Create a completely static and unique identifier. 
-        //    The '##' tells ImGui that the following text is the ID and should not be displayed.
-        std::string staticId = "##" + msgSpec.Name + "_PubSubHeader";
-
-        // 3. Combine them. The label passed to ImGui now has a stable ID.
-        std::string fullLabel = visibleLabel + staticId;
+        std::string counts = "(Pubs: " + std::to_string(totalPubs) + ", Subs: " + std::to_string(totalSubs) + ")";
 
         // 4. Use the new, stable label for the collapsing header.
-        if (ImGui::CollapsingHeader("Publishers & Subscribers")) {
+        bool headerOpen = ImGui::CollapsingHeader("Publishers & Subscribers");
+        
+        // Draw counts as right-aligned text overlaid on the same line as the header
+        ImVec2 headerPos = ImGui::GetItemRectMin();
+        ImVec2 headerSize = ImGui::GetItemRectSize();
+        ImVec2 textSize = ImGui::CalcTextSize(counts.c_str());
+        ImVec2 textPos = ImVec2(headerPos.x + headerSize.x - textSize.x, headerPos.y);
+        
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddText(textPos, ImGui::GetColorU32(ImGuiCol_Text), counts.c_str());
+        
+        if (headerOpen) {
             ImGui::Indent();
 
-            std::string counts = "(Pubs: " + std::to_string(totalPubs) + ", Subs: " + std::to_string(totalSubs) + ")";
-            ImGui::Text(counts.c_str());
-            
             // Publishers section
             ImGui::Text("Publishers:");
             ImGui::SameLine();
