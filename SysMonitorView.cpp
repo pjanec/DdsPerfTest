@@ -26,8 +26,8 @@ SysMonitorView::~SysMonitorView()
     if (_reader >= 0) dds_delete(_reader);
     if (_topic >= 0) dds_delete(_topic);
 
-
     CloseCsvFile();
+    // The string cache and history deque now manage their own memory automatically.
 }
 
 void SysMonitorView::Tick()
@@ -51,12 +51,52 @@ void SysMonitorView::ReadSamples()
     {
         if (infos[i].valid_data)
         {
-            auto* sample = static_cast<Net_SystemMonitorSample*>(samples[i]);
-            _app->CacheIpAddress(sample->computerName, sample->ipAddress);
-            auto& history = _historySamples[sample->computerName];
-            history.push_back(*sample);
+            auto* loaned_sample = static_cast<Net_SystemMonitorSample*>(samples[i]);
+
+            // --- START: EFFICIENT CACHING LOGIC ---
+              
+            // 1. Get a stable pointer for computerName
+            const char* stable_computer_name;
+            // Create a cheap, non-owning string_view. NO ALLOCATION HERE.
+            std::string_view computer_name_view(loaned_sample->computerName);
+            auto it_computer = _stringCache.find(computer_name_view);
+
+            if (it_computer != _stringCache.end()) {
+                // String already exists. Get a stable pointer to it.
+                stable_computer_name = it_computer->c_str();
+            } else {
+                // String is new. Insert it (ONE ALLOCATION) and get a pointer.
+                stable_computer_name = _stringCache.insert(std::string(computer_name_view)).first->c_str();
+            }
+
+            // 2. Get a stable pointer for ipAddress
+            const char* stable_ip_address;
+            std::string_view ip_address_view(loaned_sample->ipAddress);
+            auto it_ip = _stringCache.find(ip_address_view);
+
+            if (it_ip != _stringCache.end()) {
+                stable_ip_address = it_ip->c_str();
+            } else {
+                stable_ip_address = _stringCache.insert(std::string(ip_address_view)).first->c_str();
+            }
+
+            // 3. Create our lightweight sample with the stable pointers.
+            PerformanceSample owned_sample;
+            owned_sample.computerName = stable_computer_name;
+            owned_sample.ipAddress = stable_ip_address;
+            owned_sample.timestampUtc = loaned_sample->timestampUtc;
+            owned_sample.cpuUsagePercent = loaned_sample->cpuUsagePercent;
+            owned_sample.memoryUsageMb = loaned_sample->memoryUsageMb;
+            owned_sample.networkSentMbps = loaned_sample->networkSentMbps;
+            owned_sample.networkReceivedMbps = loaned_sample->networkReceivedMbps;
+
+            // --- END: EFFICIENT CACHING LOGIC ---
+
+            // Now, store the owned copy in history.
+            auto& history = _historySamples[stable_computer_name];
+            history.push_back(owned_sample);
             
-            // Prune old samples to prevent memory leak
+            // Prune old samples (no manual freeing needed anymore).
             auto now = std::chrono::system_clock::now();
             while (!history.empty()) {
                 auto sampleTime = std::chrono::time_point<std::chrono::system_clock>() + std::chrono::nanoseconds(history.front().timestampUtc);
@@ -70,7 +110,7 @@ void SysMonitorView::ReadSamples()
             
             if (_recordToCsv)
             {
-                WriteToCsv(*sample);
+                WriteToCsv(owned_sample);
             }
         }
     }
@@ -222,7 +262,7 @@ std::string SysMonitorView::FormatTimestampISO(long long timestampUtc)
     return result;
 }
 
-void SysMonitorView::WriteToCsv(const Net_SystemMonitorSample& sample)
+void SysMonitorView::WriteToCsv(const PerformanceSample& sample)
 {
     if (!_csvFile.is_open()) return;
 

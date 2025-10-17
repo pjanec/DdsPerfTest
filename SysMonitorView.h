@@ -6,30 +6,17 @@
 #include <fstream>
 #include <vector>
 #include <deque>
+#include <unordered_set>
+#include <string_view>
+
+// Include the new definition files
+#include "PerfMonitorDefs.h"
+#include "StringCache.h"
 
 namespace DdsPerfTest { class App; }
 
 namespace DdsPerfTest
 {
-    enum class PerfMetric
-    {
-        CPU,
-        Memory,
-        NetworkSent,
-        NetworkReceived
-    };
-
-    struct ChartWindowState
-    {
-        bool IsOpen = false;
-        std::string ComputerName;
-        PerfMetric Metric;
-        float TimeWindowSec = 10.0f;
-        std::string WindowId; // Unique ID for ImGui
-        bool AutoScale = true;
-        float ManualMax = 100.0f;
-    };
-
     class SysMonitorView
     {
     public:
@@ -44,7 +31,7 @@ namespace DdsPerfTest
 
     private:
         void ReadSamples();
-        void WriteToCsv(const Net_SystemMonitorSample& sample);
+        void WriteToCsv(const PerformanceSample& sample);
         void OpenCsvFile();
         void CloseCsvFile();
         std::string FormatTimestampISO(long long timestampUtc);
@@ -55,14 +42,15 @@ namespace DdsPerfTest
         int _participant = -1;
         int _topic = -1;
         int _reader = -1;
-        
-        // Replace _latestSamples with history:
-        std::map<std::string, std::deque<Net_SystemMonitorSample>> _historySamples;
-        const size_t _maxHistorySeconds = 60; // Store up to a minute of data
-        
-        // Add this to manage chart windows:
+          
+        // The history deque now stores our new lightweight struct.
+        std::map<std::string, std::deque<PerformanceSample>> _historySamples;
+        const size_t _maxHistorySeconds = 60;
+          
+        // Update the cache declaration to use the transparent hasher.
+        std::unordered_set<std::string, StringViewHasher, std::equal_to<>> _stringCache;
+          
         std::vector<ChartWindowState> _chartWindows;
-        
         bool _recordToCsv = false;
         std::ofstream _csvFile;
     };

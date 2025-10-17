@@ -142,7 +142,7 @@ bool SysMonitor::CollectPerformanceData(float& cpu, float& mem, float& netSent, 
 
 void SysMonitor::PublishPerformanceData(float cpu, float mem, float netSent, float netReceived)
 {
-    Net_SystemMonitorSample sample = { 0 };
+    Net_SystemMonitorSample sample = {};
     auto now = std::chrono::system_clock::now();
     sample.timestampUtc = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     sample.computerName = (char*)_app->GetAppId().ComputerName.c_str();

@@ -22,7 +22,7 @@ namespace DdsPerfTest
 
 	void CommandMgr::SendCommand(const Command& cmd)
 	{
-		Net_Command sample = { 0 };
+		Net_Command sample = {};
 		sample.Type = (char*)cmd.Type.c_str();
 		sample.Data = (char*)cmd.Data.c_str();
 		dds_write(_commandRW->GetWriter(), &sample);
@@ -31,7 +31,7 @@ namespace DdsPerfTest
 	void CommandMgr::ReadCommands()
 	{
 		const int MAX_SAMPLES = 10;
-		Net_Command* samples[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
+		Net_Command* samples[MAX_SAMPLES] = {}; // we want DDS to allocate memory for us (we do not need to care about freeing it)
 		dds_sample_info_t infos[MAX_SAMPLES];
 
 		int num = dds_take(_commandRW->GetReader(), (void**)samples, infos, MAX_SAMPLES, MAX_SAMPLES);

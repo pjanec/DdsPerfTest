@@ -26,7 +26,7 @@ namespace DdsPerfTest
     void DataMgr::ReadSettings()
     {
         const int MAX_SAMPLES = 10;
-        Net_MasterSettings* samples[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
+        Net_MasterSettings* samples[MAX_SAMPLES] = {}; // we want DDS to allocate memory for us (we do not need to care about freeing it)
         dds_sample_info_t infos[MAX_SAMPLES];
 
         int num = dds_take(_sharedDataRW->GetReader(), (void**)samples, infos, MAX_SAMPLES, MAX_SAMPLES);
@@ -87,7 +87,7 @@ namespace DdsPerfTest
 
     void DataMgr::SendSettings(SharedData& settings)
     {
-        Net_MasterSettings sample = { 0 };
+        Net_MasterSettings sample = {};
 
         sample.Sender.ComputerName = (char*)_app->GetAppId().ComputerName.c_str();
         sample.Sender.ProcessId = _app->GetAppId().ProcessId;
@@ -193,10 +193,10 @@ namespace DdsPerfTest
                 if (lineNo == 1) continue; // skip the header line
 
                 MsgSettings msg;
-                char name[1000] = { 0 };
+                char name[1000] = {};
                 int opened = 0;
-                int publs[MAX_APPS] = { 0 };
-                int subss[MAX_APPS] = { 0 };
+                int publs[MAX_APPS] = {};
+                int subss[MAX_APPS] = {};
                 int allPublDisabled = 0;
                 int allSubsDisabled = 0;
 

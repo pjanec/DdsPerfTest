@@ -24,7 +24,7 @@ namespace DdsPerfTest
 		int reader = _appIdRW->GetReader();
 
 		const int MAX_SAMPLES = 100;
-		Net_AppId* appIdPtrs[MAX_SAMPLES] = { 0 }; // we want DDS to allocate memory for us (we do not need to care about freeing it)
+		Net_AppId* appIdPtrs[MAX_SAMPLES] = {}; // we want DDS to allocate memory for us (we do not need to care about freeing it)
 		dds_sample_info_t infos[MAX_SAMPLES];
 
 		int num = dds_read(reader, (void**)appIdPtrs, infos, MAX_SAMPLES, MAX_SAMPLES);
@@ -58,7 +58,7 @@ namespace DdsPerfTest
 
 	void AppScan::PublishAppId(const AppId& appId)
 	{
-		Net_AppId sample = { 0 };
+		Net_AppId sample = {};
 		sample.ComputerName = (char*)appId.ComputerName.c_str();
 		sample.ProcessId = appId.ProcessId;
 		dds_write(_appIdRW->GetWriter(), &sample);

@@ -195,8 +195,10 @@ copy /y *.ini $(TargetDir)</Command>
     <ClInclude Include="MsgEdit.h" />
     <ClInclude Include="NetworkDefs.h" />
     <ClInclude Include="ParticMgr.h" />
+    <ClInclude Include="PerfMonitorDefs.h" />
     <ClInclude Include="Publisher.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringCache.h" />
     <ClInclude Include="SubsStatsMgr.h" />
     <ClInclude Include="SysMonitor.h" />
     <ClInclude Include="SysMonitorView.h" />
