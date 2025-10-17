@@ -274,3 +274,5 @@ __pycache__/
 *.bkp
 
 DUMP*.txt
+.dumps/
+performance_log*.csv

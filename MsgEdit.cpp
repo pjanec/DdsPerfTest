@@ -81,18 +81,22 @@ namespace DdsPerfTest
         for (int count : msgSpec.PublCnt) totalPubs += count;
         for (int count : msgSpec.SubsCnt) totalSubs += count;
         
-        // Use fixed ID based on message name to prevent header from closing when totals change
-        ImGui::PushID(("PubSubTable_" + msgSpec.Name).c_str());
-        
-        // Header with totals - use ## to hide the ID part from display
-        std::string headerText = "Publishers & Subscribers (Pubs: " + std::to_string(totalPubs) + 
-                               ", Subs: " + std::to_string(totalSubs) + ")##" + msgSpec.Name;
-        
-        if (ImGui::CollapsingHeader(headerText.c_str())) {
+        // 1. Create the text that will be displayed to the user. This part is dynamic.
+        std::string visibleLabel = "Publishers & Subscribers";
+
+        // 2. Create a completely static and unique identifier. 
+        //    The '##' tells ImGui that the following text is the ID and should not be displayed.
+        std::string staticId = "##" + msgSpec.Name + "_PubSubHeader";
+
+        // 3. Combine them. The label passed to ImGui now has a stable ID.
+        std::string fullLabel = visibleLabel + staticId;
+
+        // 4. Use the new, stable label for the collapsing header.
+        if (ImGui::CollapsingHeader("Publishers & Subscribers")) {
             ImGui::Indent();
-            
-            // Quick actions with input fields for custom values
-            ImGui::Text("Quick Actions:");
+
+            std::string counts = "(Pubs: " + std::to_string(totalPubs) + ", Subs: " + std::to_string(totalSubs) + ")";
+            ImGui::Text(counts.c_str());
             
             // Publishers section
             ImGui::Text("Publishers:");
@@ -268,8 +272,6 @@ namespace DdsPerfTest
             ImGui::Unindent();
         }
         
-        ImGui::PopID(); // Pop the fixed ID for this message type
-
         return changed;
     }
 
