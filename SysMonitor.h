@@ -33,6 +33,7 @@ namespace DdsPerfTest
         std::string FindBusiestNetworkInterface();
         std::string GetInterfaceNameFromIp(const std::string& ipAddress);
         std::string GetIpFromInterfaceName(const std::string& interfaceName);
+        std::string FindPdhInstanceNameForIp(const std::string& targetIp);
 
         void PublishPerformanceData(float cpu, float mem, float netSent, float netReceived);
         

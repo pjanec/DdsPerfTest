@@ -23,7 +23,7 @@ namespace DdsPerfTest
 
 		int reader = _appIdRW->GetReader();
 
-		const int MAX_SAMPLES = 100;
+		const int MAX_SAMPLES = 1000;
 		Net_AppId* appIdPtrs[MAX_SAMPLES] = {}; // we want DDS to allocate memory for us (we do not need to care about freeing it)
 		dds_sample_info_t infos[MAX_SAMPLES];
 

@@ -186,7 +186,7 @@ namespace DdsPerfTest
         int lineNo = 0;
         while (!feof(f))
         {
-            char line[1024];
+            char line[10024];
             while (fgets(line, sizeof(line), f))
             {
                 lineNo++;
@@ -195,34 +195,88 @@ namespace DdsPerfTest
                 MsgSettings msg;
                 char name[1000] = {};
                 int opened = 0;
-                int publs[MAX_APPS] = {};
-                int subss[MAX_APPS] = {};
                 int allPublDisabled = 0;
                 int allSubsDisabled = 0;
 
-                int numScanned = sscanf(line, "%[^,],%d,%d,%d,%d,%d,%d,"
-                    "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d," // MAX_APPS !!!
-                    "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,",// MAX_APPS !!!
-                    name, &msg.Disabled, &opened, &msg.Rate, &msg.Size, &allPublDisabled, &allSubsDisabled,
-                    &publs[0], &publs[1], &publs[2], &publs[3], &publs[4], &publs[5], &publs[6], &publs[7], &publs[8], &publs[9],
-                    &subss[0], &subss[1], &subss[2], &subss[3], &subss[4], &subss[5], &subss[6], &subss[7], &subss[8], &subss[9]
-                );
+                // Parse the initial fixed fields: name, disabled, opened, rate, size, allPublDisabled, allSubsDisabled
+                const char* pos = line;
+                
+                // Parse name (up to first comma)
+                const char* comma = strchr(pos, ',');
+                if (!comma) continue;
+                size_t nameLen = comma - pos;
+                if (nameLen >= sizeof(name)) nameLen = sizeof(name) - 1;
+                strncpy(name, pos, nameLen);
+                name[nameLen] = '\0';
+                pos = comma + 1;
 
-                if (numScanned == 7 + MAX_APPS + MAX_APPS)
+                // Parse disabled
+                msg.Disabled = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Parse opened
+                opened = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Parse rate
+                msg.Rate = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Parse size
+                msg.Size = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Parse allPublDisabled
+                allPublDisabled = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Parse allSubsDisabled
+                allSubsDisabled = atoi(pos);
+                comma = strchr(pos, ',');
+                if (!comma) continue;
+                pos = comma + 1;
+
+                // Now dynamically parse MAX_APPS publisher counts
+                msg.PublCnt.clear();
+                for (int i = 0; i < MAX_APPS; i++)
                 {
-                    msg.Name = name;
-                    msg.Opened = opened;
-                    msg.AllPublDisabled = allPublDisabled;
-                    msg.AllSubsDisabled = allSubsDisabled;
-
-                    for (int i = 0; i < MAX_APPS; i++)
-                        msg.PublCnt.push_back(publs[i]);
-
-                    for (int i = 0; i < MAX_APPS; i++)
-                        msg.SubsCnt.push_back(subss[i]);
-
-                    settings.Msgs[msg.Name] = msg;
+                    int publCount = atoi(pos);
+                    msg.PublCnt.push_back(publCount);
+                    
+                    comma = strchr(pos, ',');
+                    if (!comma) break; // End of line or malformed
+                    pos = comma + 1;
                 }
+
+                // Now dynamically parse MAX_APPS subscriber counts
+                msg.SubsCnt.clear();
+                for (int i = 0; i < MAX_APPS; i++)
+                {
+                    int subsCount = atoi(pos);
+                    msg.SubsCnt.push_back(subsCount);
+
+                    comma = strchr(pos, ',');
+                    if (comma) pos = comma + 1;
+                    // For the last subscriber count, there might not be a comma
+                }
+
+                // Set the parsed values
+                msg.Name = name;
+                msg.Opened = opened;
+                msg.AllPublDisabled = allPublDisabled;
+                msg.AllSubsDisabled = allSubsDisabled;
+
+                settings.Msgs[msg.Name] = msg;
             }
         }
         fclose(f);
@@ -248,6 +302,5 @@ namespace DdsPerfTest
 			_localDirty = false;
 		}
     }
-
 
 }

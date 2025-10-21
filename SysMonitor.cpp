@@ -6,6 +6,7 @@
 #include <winsock2.h>   // must be included before ws2tcpip.h / windows.h
 #include <ws2tcpip.h>   // getnameinfo, InetPton/InetNtop, NI_* flags, INET6_ADDRSTRLEN
 #include <iphlpapi.h>   // GetAdaptersAddresses, IP_ADAPTER_ADDRESSES
+#include <cctype>       // Required for isalnum and tolower
 #pragma comment(lib, "pdh.lib")
 #pragma comment(lib, "Iphlpapi.lib")
 #pragma comment(lib, "Ws2_32.lib")
@@ -13,6 +14,21 @@
 
 namespace DdsPerfTest
 {
+
+// Helper to normalize an adapter name for reliable comparison.
+// "Intel(R) Ethernet #5" becomes "inthelethernet5"
+std::string NormalizeNameForComparison(const std::string& name)
+{
+    std::string normalized;
+    for (char c : name)
+    {
+        if (std::isalnum(static_cast<unsigned char>(c)))
+        {
+            normalized += std::tolower(static_cast<unsigned char>(c));
+        }
+    }
+    return normalized;
+}
 
 SysMonitor::SysMonitor(App* app) : _app(app)
 {
@@ -90,30 +106,46 @@ void SysMonitor::InitializePdh()
 {
     if (PdhOpenQuery(NULL, 0, &_pdhQuery) != ERROR_SUCCESS) return;
 
+    // This call determines _monitoredIpAddress and the friendly _networkInterfaceName
     _networkInterfaceName = FindNetworkInterfaceToMonitor();
 
-    if (!_networkInterfaceName.empty())
+    // First, try the robust method of finding the exact PDH instance name.
+    std::string pdhInstanceName = FindPdhInstanceNameForIp(_monitoredIpAddress);
+
+    // --- START: FALLBACK LOGIC ---
+    if (pdhInstanceName.empty())
     {
-        printf("SysMonitor: Monitoring network performance on interface: '%s'\n", _networkInterfaceName.c_str());
+        // If the robust method failed (due to corrupted counters), fall back
+        // to using the "friendly name" directly. This might work.
+        printf("SysMonitor WARNING: Failed to find an exact PDH instance for IP %s. Falling back to using the friendly name '%s'. This may not work.\n",
+            _monitoredIpAddress.c_str(), _networkInterfaceName.c_str());
+        pdhInstanceName = _networkInterfaceName;
+    }
+    // --- END: FALLBACK LOGIC ---
+
+    if (!pdhInstanceName.empty())
+    {
+        printf("SysMonitor: Using PDH instance name: '%s'\n", pdhInstanceName.c_str());
     }
     else
     {
-        printf("SysMonitor: WARNING - Could not determine a network interface to monitor. Network stats will be unavailable.\n");
+        printf("SysMonitor: WARNING - Could not determine a PDH instance to monitor. Network stats will be unavailable.\n");
     }
 
     PdhAddCounter(_pdhQuery, L"\\Processor Information(_Total)\\% Processor Time", 0, &_cpuCounter);
     PdhAddCounter(_pdhQuery, L"\\Memory\\Available MBytes", 0, &_memCounter);
 
-    if (!_networkInterfaceName.empty())
+    // Use the determined pdhInstanceName to build the counter paths.
+    if (!pdhInstanceName.empty())
     {
-        std::wstring basePath = L"\\Network Interface(" + std::wstring(_networkInterfaceName.begin(), _networkInterfaceName.end()) + L")\\";
+        std::wstring basePath = L"\\Network Interface(" + std::wstring(pdhInstanceName.begin(), pdhInstanceName.end()) + L")\\";
         std::wstring sentPath = basePath + L"Bytes Sent/sec";
         std::wstring receivedPath = basePath + L"Bytes Received/sec";
 
         PdhAddCounter(_pdhQuery, sentPath.c_str(), 0, &_netSentCounter);
         PdhAddCounter(_pdhQuery, receivedPath.c_str(), 0, &_netReceivedCounter);
     }
-    
+
     PdhCollectQueryData(_pdhQuery);
 }
 
@@ -184,6 +216,101 @@ std::string SysMonitor::GetIpFromInterfaceName(const std::string& interfaceName)
                     char addrStr[INET_ADDRSTRLEN];
                     getnameinfo(pUnicast->Address.lpSockaddr, pUnicast->Address.iSockaddrLength, addrStr, sizeof(addrStr), NULL, 0, NI_NUMERICHOST);
                     return std::string(addrStr);
+                }
+            }
+        }
+    }
+    return "";
+}
+
+std::string SysMonitor::FindPdhInstanceNameForIp(const std::string& targetIp)
+{
+    if (targetIp.empty()) return "";
+
+    // --- START: NEW ROBUST IMPLEMENTATION WITH RETRY LOOP ---
+
+    // Step 1: Enumerate all available PDH "Network Interface" instance names.
+    std::vector<std::string> pdhInstanceNames;
+    DWORD instanceListSize = 0;
+    DWORD counterListSize = 0;
+    PDH_STATUS status;
+    std::vector<wchar_t> instanceNamesBuffer;
+
+    // This loop robustly handles the case where the required buffer size changes between calls.
+    for (int retry = 0; retry < 2; ++retry) // Typically only needs one retry
+    {
+        status = PdhEnumObjectItems(NULL, NULL, L"Network Interface", instanceNamesBuffer.data(), &instanceListSize, NULL, &counterListSize, PERF_DETAIL_WIZARD, 0);
+
+        if (status == ERROR_SUCCESS) {
+            break; // Success!
+        }
+        else if (instanceListSize > 0) {
+            // Buffer was too small. Resize it and the loop will try again.
+            instanceNamesBuffer.resize(instanceListSize);
+        }
+        else {
+            // A genuine error occurred.
+            char buffer[256];
+            FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                           NULL, status, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                           buffer, sizeof(buffer), NULL);
+            printf("SysMonitor ERROR: PdhEnumObjectItems failed with status 0x%lx: %s\n", status, buffer);
+            return ""; // Exit on hard error.
+        }
+    }
+
+    if (status != ERROR_SUCCESS) {
+        printf("SysMonitor ERROR: Failed to enumerate PDH instances after retries.\n");
+        return "";
+    }
+
+    for (const wchar_t* instance = instanceNamesBuffer.data(); *instance; instance += wcslen(instance) + 1) {
+        std::wstring wideInstance(instance);
+        pdhInstanceNames.push_back(std::string(wideInstance.begin(), wideInstance.end()));
+    }
+      
+    // --- END: NEW ROBUST IMPLEMENTATION ---
+
+    // Step 2: Correlate with the adapter's IP address (this logic remains the same).
+    ULONG bufferSize = 0;
+    GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &bufferSize);
+    if (bufferSize == 0) return "";
+
+    std::vector<BYTE> buffer(bufferSize);
+    IP_ADAPTER_ADDRESSES* pAddresses = (IP_ADAPTER_ADDRESSES*)buffer.data();
+    if (GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, NULL, pAddresses, &bufferSize) == NO_ERROR)
+    {
+        for (IP_ADAPTER_ADDRESSES* pAdapter = pAddresses; pAdapter != NULL; pAdapter = pAdapter->Next)
+        {
+            for (IP_ADAPTER_UNICAST_ADDRESS* pUnicast = pAdapter->FirstUnicastAddress; pUnicast != NULL; pUnicast = pUnicast->Next)
+            {
+                char addrStr[INET_ADDRSTRLEN];
+                getnameinfo(pUnicast->Address.lpSockaddr, pUnicast->Address.iSockaddrLength, addrStr, sizeof(addrStr), NULL, 0, NI_NUMERICHOST);
+                  
+                if (targetIp == addrStr)
+                {
+                    std::wstring wideDescription(pAdapter->Description);
+                    std::string description(wideDescription.begin(), wideDescription.end());
+                    std::string normalizedDescription = NormalizeNameForComparison(description);
+
+                    printf("\nSysMonitor DEBUG: Found target adapter for IP %s\n", targetIp.c_str());
+                    printf("  - API Description: '%s'\n", description.c_str());
+                    printf("  - Normalized Name: '%s'\n", normalizedDescription.c_str());
+                    printf("  - Now comparing against available PDH instances...\n");
+
+                    for (const auto& pdhName : pdhInstanceNames)
+                    {
+                        std::string normalizedPdhName = NormalizeNameForComparison(pdhName);
+                        printf("    - Comparing with PDH instance: '%s' (Normalized: '%s')\n", pdhName.c_str(), normalizedPdhName.c_str());
+
+                        if (normalizedPdhName == normalizedDescription)
+                        {
+                            printf("  SUCCESS: Match found!\n\n");
+                            return pdhName; // Match found!
+                        }
+                    }
+                    printf("  FAILURE: No matching PDH instance found for this adapter.\n\n");
+                    return ""; // No match found for this adapter.
                 }
             }
         }

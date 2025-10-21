@@ -7,7 +7,7 @@
 
 namespace DdsPerfTest
 {
-	const int MAX_APPS = 10;
+	const int MAX_APPS = 1000;
 
 	struct AppId
 	{
