@@ -6,29 +6,39 @@
 #include "TopicRW.h"
 #include "MsgDef.h"
 #include "NetworkDefs.h"
+#include <sstream>
 
 namespace DdsPerfTest
 {
 
-    Publisher::Publisher( App* app, std::string msgClass, int index )
+    Publisher::Publisher( App* app, std::string msgClass, int index, int domainId, const std::string& partitionName )
     {
         _app = app;
 		_msgClass = msgClass;
+		_partitionName = partitionName;
 		_index = index;
-		printf("Publisher::Publisher(%s, %d)\n", msgClass.c_str(), index);
+		_domainId = domainId;
+		printf("Publisher::Publisher(%s, %d, Domain: %d)\n", msgClass.c_str(), index, domainId);
 
-        _participant = _app->GetParticipant( index );
+        _participant = _app->GetParticipant( index, _domainId );
 
         auto& msgDefs = _app->GetMsgDefs();
 
-        // find msg by name
         auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), [msgClass](const MsgDef& msgDef) { return msgDef.Name == msgClass; });
         if (msgDefIt == msgDefs.end())
 			DDS_FATAL("msgDef %s not found\n", msgClass.c_str());
         auto& msgDef = *msgDefIt;
 
-        // Parse partition names from the message definition
-        auto partitions = msgDef.ParsePartitions();
+        std::vector<std::string> partitions;
+        std::stringstream ss(_partitionName);
+        std::string partition;
+        while (std::getline(ss, partition, ',')) {
+            partition.erase(0, partition.find_first_not_of(" \t\n\r"));
+            partition.erase(partition.find_last_not_of(" \t\n\r") + 1);
+            if (!partition.empty()) {
+                partitions.push_back(partition);
+            }
+        }
 
 		// create topic with partition support
         _topicRW = std::make_shared<TopicRW>(

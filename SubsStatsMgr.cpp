@@ -8,10 +8,9 @@
 
 namespace DdsPerfTest
 {
-	SubsStatsMgr::SubsStatsMgr(App* app)
+	SubsStatsMgr::SubsStatsMgr(App* app, int participant)
 	: _app(app)
 	{
-		int participant = app->GetParticipant(0);
 		_subsStatRW = std::make_shared<TopicRW>(participant, "SubsStats", &Net_SubsStats_desc, DDS_RELIABILITY_RELIABLE, DDS_DURABILITY_TRANSIENT_LOCAL, DDS_HISTORY_KEEP_LAST, 1);
 	}
 
@@ -27,8 +26,8 @@ namespace DdsPerfTest
 
 	void SubsStatsMgr::DrawSubsStats()
 	{
-		// show the stats in ImGui table (new style table) - increased column count to 9 for IP address
-		if (ImGui::BeginTable("SubsStats", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
+			// show the stats in ImGui table (new style table) - increased column count to 10 for Domain and Partition
+		if (ImGui::BeginTable("SubsStats", 10, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_SortMulti | ImGuiTableFlags_SortTristate))
 		{
 			// sort stats
 			std::vector<SubsStats> stats;
@@ -41,13 +40,14 @@ namespace DdsPerfTest
 				return false;
 				});
 
-			// header - added Partition, Computer and IP columns
+			// header - added DomainId and Partition, Computer and IP columns
 			ImGui::TableSetupColumn("Msg");
 			ImGui::TableSetupColumn("Computer");
 			ImGui::TableSetupColumn("IP Address");
 			ImGui::TableSetupColumn("App");
 			ImGui::TableSetupColumn("Idx");
-			ImGui::TableSetupColumn("Partition");  // NEW: Partition column
+			ImGui::TableSetupColumn("Domain");
+			ImGui::TableSetupColumn("Partition");
 			ImGui::TableSetupColumn("Recv");
 			ImGui::TableSetupColumn("Rate");
 			ImGui::TableSetupColumn("Lost");
@@ -72,11 +72,13 @@ namespace DdsPerfTest
 				ImGui::Text("%s", ipAddress.c_str());
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Key.AppIndex);
-				ImGui::TableNextColumn();
-				ImGui::Text("%d", s.Key.InAppIndex);
-				ImGui::TableNextColumn();
-				ImGui::Text("%s", s.PartitionName.c_str());  // NEW: Display partition name
-				ImGui::TableNextColumn();
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", s.Key.InAppIndex);
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", s.DomainId);
+			ImGui::TableNextColumn();
+			ImGui::Text("%s", s.PartitionName.c_str());
+			ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Received);
 				ImGui::TableNextColumn();
 				ImGui::Text("%d", s.Rate);
@@ -119,7 +121,8 @@ namespace DdsPerfTest
 			{
 				SubsStats stats;
 				stats.Key = key;
-				stats.PartitionName = sample->PartitionName ? sample->PartitionName : "";  // NEW: Store partition name
+				stats.DomainId = sample->DomainId;
+				stats.PartitionName = sample->PartitionName ? sample->PartitionName : "";
 				stats.Rate = sample->Rate;
 				stats.Lost = sample->Lost;
 				stats.Received = sample->Received;

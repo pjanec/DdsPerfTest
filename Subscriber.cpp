@@ -7,32 +7,42 @@
 #include "TopicRW.h"
 #include "MsgDef.h"
 #include "NetworkDefs.h"
+#include <sstream>
 
 namespace DdsPerfTest
 {
 
 // implement app here
-Subscriber::Subscriber(App* app, std::string msgClass, int index) :
+Subscriber::Subscriber(App* app, std::string msgClass, int index, int domainId, const std::string& partitionName) :
 	_app(app),
 	_msgClass(msgClass),
-	_index(index)
+	_partitionName(partitionName),
+	_index(index),
+	_domainId(domainId)
 {
-	printf("Subscriber::Subscriber(%s, %d)\n", msgClass.c_str(), index);
+	printf("Subscriber::Subscriber(%s, %d, Domain: %d)\n", msgClass.c_str(), index, domainId);
 	_timerSendStats = std::make_shared<Timer>([this]() -> void { this->SendStats(false); }, 500000);
 	_timerCalcRate = std::make_shared<Timer>([this]() -> void { this->CalcRate(); }, 500000);
 
 	auto& msgDefs = _app->GetMsgDefs();
 
-	// find msg by name
 	auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), [msgClass](const MsgDef& msgDef) { return msgDef.Name == msgClass; });
 	if (msgDefIt == msgDefs.end())
 		DDS_FATAL("msgDef %s not found\n", msgClass.c_str());
 	_msgDef = *msgDefIt;
 
-	_participant = _app->GetParticipant(_index);
+	_participant = _app->GetParticipant(_index, _domainId);
 
-	// Parse partition names from the message definition
-	auto partitions = _msgDef.ParsePartitions();
+	std::vector<std::string> partitions;
+	std::stringstream ss(_partitionName);
+	std::string partition;
+	while (std::getline(ss, partition, ',')) {
+		partition.erase(0, partition.find_first_not_of(" \t\n\r"));
+		partition.erase(partition.find_last_not_of(" \t\n\r") + 1);
+		if (!partition.empty()) {
+			partitions.push_back(partition);
+		}
+	}
 
 	// create topic with partition support
 	_topicRW = std::make_shared<TopicRW>(
@@ -181,7 +191,8 @@ void Subscriber::SendStats( bool dispose )
 	stats.AppIndex = _app->GetAppIndex();
 	stats.MsgClass = dds_string_dup(_msgClass.c_str());
 	stats.InAppIndex = _index;
-	stats.PartitionName = dds_string_dup(_msgDef.PartitionName.c_str());  // NEW: Include partition name
+	stats.DomainId = _domainId;
+	stats.PartitionName = dds_string_dup(_partitionName.c_str());
 	stats.Received = _numRecvTotal;
 	stats.Rate = _rate;
 	stats.Lost = _numLostMsgs;

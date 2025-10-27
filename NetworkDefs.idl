@@ -19,6 +19,8 @@ struct MsgSpec
 
     long Rate; // messages per second
     long Size; // approx size in bytes
+    long DomainId; // DDS domain ID this message class operates on
+    string PartitionName; // DDS partition name(s) for this message class (comma-separated)
 
     sequence<long> SubsCnt; // number of subscribers per individual apps (size=num of apps)
     boolean AllSubsDisabled; // true = as if SubsCnt all zeros
@@ -44,7 +46,8 @@ struct SubsStats
     long AppIndex;   // index to MasterSettings.Apps
     string MsgClass; // MsgSpec.Name
     long InAppIndex;   // index within app
-    string PartitionName; // NEW: partition name(s) this subscriber is listening to
+    long DomainId; // DDS domain ID this subscriber operates on
+    string PartitionName; // partition name(s) this subscriber is listening to
 
     long Received;  // total msgs received
     long Rate;       // measured rate of the message

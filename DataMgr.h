@@ -13,7 +13,7 @@ namespace DdsPerfTest
 	class DataMgr
 	{
 	public:
-		DataMgr(App* app, std::function<void(const SharedData&)> onReceived );
+		DataMgr(App* app, int participant, std::function<void(const SharedData&)> onReceived );
 		void Tick();
 
 		const SharedData& GetReceived() const { return _received; }

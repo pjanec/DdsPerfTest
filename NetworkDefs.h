@@ -70,6 +70,8 @@ typedef struct Net_MsgSpec
   char * Name;
   int32_t Rate;
   int32_t Size;
+  int32_t DomainId;
+  char * PartitionName;
   dds_sequence_long SubsCnt;
   bool AllSubsDisabled;
   dds_sequence_long PublCnt;
@@ -131,6 +133,7 @@ typedef struct Net_SubsStats
   int32_t AppIndex;
   char * MsgClass;
   int32_t InAppIndex;
+  int32_t DomainId;
   char * PartitionName;
   int32_t Received;
   int32_t Rate;

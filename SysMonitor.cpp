@@ -70,7 +70,7 @@ void SysMonitor::Initialize()
     if (GetPhysicallyInstalledSystemMemory(&totalMemoryKb)) {
         _totalMemoryMb = (float)totalMemoryKb / 1024.0f;
     }
-    _participant = _app->GetParticipant(0);
+    _participant = _app->GetParticipant(0, 0);
 
     _topic = dds_create_topic(_participant, &Net_SystemMonitorSample_desc, "SystemMonitorSample", NULL, NULL);
     if (_topic < 0) DDS_FATAL("dds_create_topic failed for SystemMonitorSample: %s", dds_strretcode(-_topic));

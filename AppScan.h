@@ -17,7 +17,7 @@ namespace DdsPerfTest
 	class AppScan
 	{
 	public:
-		AppScan(App* app);
+		AppScan(App* app, int participant);
 		~AppScan();
 
 		void Scan();

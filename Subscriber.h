@@ -18,7 +18,9 @@ class Subscriber
 {
 	App* _app;
 	std::string _msgClass;
+	std::string _partitionName;
 	int _index;
+	int _domainId;
 	std::shared_ptr<Timer> _timerSendStats;
 	std::shared_ptr<Timer> _timerCalcRate;
 
@@ -40,7 +42,7 @@ class Subscriber
 	std::map<PubKey, int> _lastReceiveSeqNums;
 
 public:
-	Subscriber(App* app, std::string msgClass, int index);
+	Subscriber(App* app, std::string msgClass, int index, int domainId, const std::string& partitionName);
 	~Subscriber();
 	void UpdateSettings(const MsgSettings& spec);
 	void Tick();

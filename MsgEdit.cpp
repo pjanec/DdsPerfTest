@@ -24,6 +24,18 @@ namespace DdsPerfTest
         msg.Name = msgClass;
         msg.Disabled = true; // must be enabled manually after creation (to avoid immeadiate applicatio of this new msg settings)
 
+        auto& msgDefs = _app->GetMsgDefs();
+        auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
+            [msgClass](const MsgDef& def) { return def.Name == msgClass; });
+
+        if (msgDefIt != msgDefs.end()) {
+            msg.DomainId = msgDefIt->DomainId;
+            msg.PartitionName = msgDefIt->PartitionName;
+        } else {
+            msg.DomainId = 0;
+            msg.PartitionName = "";
+        }
+
         _edited.Msgs[msgClass] = msg;
     }
 
@@ -37,20 +49,36 @@ namespace DdsPerfTest
             msgSpec.Opened = true;
             ImGui::Indent();
             
-            // Find the message definition to get partition info
-            auto& msgDefs = _app->GetMsgDefs();
-            auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
-                [&msgSpec](const MsgDef& msgDef) { return msgDef.Name == msgSpec.Name; });
-            
-            // Show partition information (read-only)
-            if (msgDefIt != msgDefs.end()) {
-                std::string partitionDisplay = msgDefIt->PartitionName.empty() ? "(default)" : msgDefIt->PartitionName;
-                ImGui::InputText("Partition", (char*)partitionDisplay.c_str(), partitionDisplay.size(), ImGuiInputTextFlags_ReadOnly);
-            }
-            
             changed |= ImGui::Checkbox("Disabled", ((bool*)&msgSpec.Disabled));
-            changed |= ImGui::SliderInt("Rate", &msgSpec.Rate, 0, 1000, "%d");
-            changed |= ImGui::SliderInt("Size", &msgSpec.Size, 0, 100000, "%d");
+            ImGui::SameLine();
+            ImGui::Text("| Rate: %d Hz | Size: %d B | Domain: %d | Partition: %s",
+                msgSpec.Rate, msgSpec.Size, msgSpec.DomainId, msgSpec.PartitionName.c_str());
+            
+            if (ImGui::CollapsingHeader("Settings"))
+            {
+                ImGui::Indent();
+                
+                changed |= ImGui::SliderInt("Rate", &msgSpec.Rate, 0, 1000, "%d Hz");
+                changed |= ImGui::SliderInt("Size", &msgSpec.Size, 0, 100000, "%d B");
+                int domainIdValue = msgSpec.DomainId;
+                if (domainIdValue < 0) domainIdValue = 0;
+                if (ImGui::InputInt("Domain", &domainIdValue, 0, 0, ImGuiInputTextFlags_None))
+                {
+                    if (domainIdValue < 0) domainIdValue = 0;
+                    msgSpec.DomainId = domainIdValue;
+                    changed = true;
+                }
+                
+                char partitionBuf[256];
+                strncpy_s(partitionBuf, sizeof(partitionBuf), msgSpec.PartitionName.c_str(), _TRUNCATE);
+                ImGui::InputText("Partition(s)", partitionBuf, sizeof(partitionBuf));
+                if (msgSpec.PartitionName != partitionBuf) {
+                    msgSpec.PartitionName = partitionBuf;
+                    changed = true;
+                }
+                
+                ImGui::Unindent();
+            }
 
             // Use the new combined publisher/subscriber table
             changed |= DrawPubSubTable(msgSpec);

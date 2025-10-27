@@ -3,6 +3,7 @@
 #include "ParticMgr.h"
 #include "App.h"
 #include "TopicRW.h"
+#include <set>
 
 namespace DdsPerfTest
 {
@@ -13,35 +14,83 @@ namespace DdsPerfTest
 
 	ParticMgr::~ParticMgr()
 	{
-		for (auto participant : _ParticMgr)
+		for (auto& domain_pair : _participantsByDomain)
 		{
-			int rc = dds_delete(participant);
-			if (rc != DDS_RETCODE_OK)
-				DDS_FATAL("dds_delete(participant): %s\n", dds_strretcode(-rc));
+			for (auto participant : domain_pair.second)
+			{
+				if (participant >= 0)
+				{
+					int rc = dds_delete(participant);
+					if (rc != DDS_RETCODE_OK)
+						DDS_FATAL("dds_delete(participant): %s\n", dds_strretcode(-rc));
+				}
+			}
 		}
-		_ParticMgr.clear();
+		_participantsByDomain.clear();
 	}
 
-	int ParticMgr::CreateParticipant()
+	int ParticMgr::CreateParticipant(dds_domainid_t domainId)
 	{
-		// create participant
-		int participant = dds_create_participant(DDS_DOMAIN_DEFAULT, NULL, NULL);
+		int participant = dds_create_participant(domainId, NULL, NULL);
 		if (participant < 0)
 		{
-			DDS_FATAL("dds_create_participant: %s\n", dds_strretcode(-participant));
+			DDS_FATAL("dds_create_participant on domain %d: %s\n", domainId, dds_strretcode(-participant));
 		}
 		return participant;
 	}
 
-	int ParticMgr::GetParticipant(int index)
+	int ParticMgr::GetParticipant(int index, dds_domainid_t domainId)
 	{
-		if (index >= (int)_ParticMgr.size())
+		auto& participants = _participantsByDomain[domainId];
+
+		if (index >= (int)participants.size())
 		{
-			// create the missing ones
-			for (int i = (int)_ParticMgr.size(); i <= index; i++)
-				_ParticMgr.push_back( CreateParticipant() );
+			participants.resize(index + 1, -1);
 		}
-		return _ParticMgr[index];
+
+		if (participants[index] < 0)
+		{
+			participants[index] = CreateParticipant(domainId);
+		}
+
+		return participants[index];
+	}
+
+	void ParticMgr::CleanupUnusedDomains(const std::set<dds_domainid_t>& activeDomains)
+	{
+		for (auto it = _participantsByDomain.begin(); it != _participantsByDomain.end(); )
+		{
+			dds_domainid_t domainId = it->first;
+
+			if (domainId == 0)
+			{
+				++it;
+				continue;
+			}
+
+			if (activeDomains.find(domainId) == activeDomains.end())
+			{
+				printf("Cleaning up unused participants for Domain ID: %d\n", domainId);
+
+				for (auto participant : it->second)
+				{
+					if (participant >= 0)
+					{
+						int rc = dds_delete(participant);
+						if (rc != DDS_RETCODE_OK)
+						{
+							fprintf(stderr, "dds_delete(participant) for domain %d failed: %s\n", domainId, dds_strretcode(-rc));
+						}
+					}
+				}
+
+				it = _participantsByDomain.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
 	}
 
 }

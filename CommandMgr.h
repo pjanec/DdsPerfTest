@@ -16,7 +16,7 @@ namespace DdsPerfTest
 	class CommandMgr
 	{
 	public:
-		CommandMgr(App* app);
+		CommandMgr(App* app, int participant);
 		void Tick();
 		std::function<void(const Command&)> OnCommand;
 		void SendCommand(const Command& cmd);

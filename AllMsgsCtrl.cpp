@@ -2,20 +2,22 @@
 #include <stdio.h>
 #include <chrono>
 #include <thread>
+#include <set>
 #include "AllMsgsCtrl.h"
 #include "App.h"
 #include "imgui.h"
 #include "dds/dds.h"
 #include "MsgController.h"
 #include "TopicRW.h"
+#include "ParticMgr.h"
 
 namespace DdsPerfTest
 {
 
-    // implement app here
-    AllMsgsCtrl::AllMsgsCtrl( App* app )
+    AllMsgsCtrl::AllMsgsCtrl( App* app, std::shared_ptr<ParticMgr> particMgr )
     {
         _app = app;
+        _particMgr = particMgr;
     }
 
     AllMsgsCtrl::~AllMsgsCtrl()
@@ -92,51 +94,85 @@ namespace DdsPerfTest
 
     void AllMsgsCtrl::Set( const SharedData& sample )
     {
-        // pass new settings to each msgclass-specific controller
-        // create new msgclass-specific controllers if necessary
+        auto& msgDefs = _app->GetMsgDefs();
 
-        std::vector<std::string> newCtrlNames;
+        std::set<std::string> newMsgNames;
+        std::vector<std::string> unknownMessages;
 
-        for( auto& msgKV : sample.Msgs )
+        for (const auto& msgKV : sample.Msgs)
         {
-            auto& msg = msgKV.second;
-            //printf("%d,%s,%d,%d,%d,%d,%d,%d\n", msg.Disabled, msg.Name.c_str(), msg.Rate, msg.Size, msg.PublCnt, msg.PublAppMask, msg.SubsCnt, msg.SubsAppMask);
+            newMsgNames.insert(msgKV.first);
+        }
 
-            newCtrlNames.push_back(msg.Name);
+        for (const auto& msgKV : sample.Msgs)
+        {
+            const auto& msg = msgKV.second;
+            
+            auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
+                [&msg](const MsgDef& msgDef) { return msgDef.Name == msg.Name; });
+            
+            if (msgDefIt == msgDefs.end())
+            {
+                unknownMessages.push_back(msg.Name);
+                continue;
+            }
 
             auto it = _msgControllers.find(msg.Name);
             if (it == _msgControllers.end())
-			{
-				// create new controller
-				auto controller = std::make_shared<MsgController>( _app, msg.Name );
-                controller->UpdateSettings( msg, sample.Disabled );
-				_msgControllers[msg.Name] = controller;
-			}
-			else
-			{
-				// update existing controller
-				it->second->UpdateSettings(msg, sample.Disabled);
-			}
+            {
+                printf("Creating new MsgController for '%s' on Domain %d\n", msg.Name.c_str(), msg.DomainId);
+                auto controller = std::make_shared<MsgController>(_app, msg.Name, msg.DomainId);
+                controller->UpdateSettings(msg, sample.Disabled);
+                _msgControllers[msg.Name] = controller;
+            }
+            else
+            {
+                if (it->second->GetSpec() != msg)
+                {
+                    printf("Recreating MsgController for '%s' due to settings change.\n", msg.Name.c_str());
+                    it->second.reset();
+                    auto newController = std::make_shared<MsgController>(_app, msg.Name, msg.DomainId);
+                    newController->UpdateSettings(msg, sample.Disabled);
+                    _msgControllers[msg.Name] = newController;
+                }
+                else
+                {
+                    it->second->UpdateSettings(msg, sample.Disabled);
+                }
+            }
         }
 
-        // remove controllers no longer part of the settings
-        // (thise still present in our cached controller but no longer part of the settings)
-        for( auto it = _msgControllers.begin(); it != _msgControllers.end(); )
-		{
-			auto& msgName = it->first;
-			auto& controller = it->second;
-            if( std::find(newCtrlNames.begin(), newCtrlNames.end(), msgName) == newCtrlNames.end() )
-			{
-				// controller no longer part of the settings
-				// remove it
-				it = _msgControllers.erase(it);
-			}
-			else
-			{
-				++it;
-			}
-		}
+        for (auto it = _msgControllers.begin(); it != _msgControllers.end(); )
+        {
+            if (newMsgNames.find(it->first) == newMsgNames.end())
+            {
+                printf("Removing obsolete MsgController for '%s'\n", it->first.c_str());
+                it = _msgControllers.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
 
+        std::set<dds_domainid_t> activeDomains;
+        for (const auto& kv : _msgControllers)
+        {
+            activeDomains.insert(kv.second->GetSpec().DomainId);
+        }
+
+        if (_particMgr)
+        {
+            _particMgr->CleanupUnusedDomains(activeDomains);
+        }
+        
+        if (!unknownMessages.empty())
+        {
+            for (const auto& msgName : unknownMessages)
+            {
+                fprintf(stderr, "WARNING: Unknown message type '%s' - skipped\n", msgName.c_str());
+            }
+        }
     }
 
 

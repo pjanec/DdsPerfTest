@@ -3,6 +3,8 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <map>
+#include <set>
 
 
 namespace DdsPerfTest
@@ -14,14 +16,16 @@ namespace DdsPerfTest
 	public:
 		ParticMgr(App* app);
 		~ParticMgr();
-		int GetParticipant(int index);
+		int GetParticipant(int index, dds_domainid_t domainId);
+		void CleanupUnusedDomains(const std::set<dds_domainid_t>& activeDomains);
 
 	protected:
-		int CreateParticipant();
+		int CreateParticipant(dds_domainid_t domainId);
 
 	protected:
 		App* _app;
-		std::vector<int> _ParticMgr;
+		// Map of domain IDs to a vector of participant handles
+		std::map<dds_domainid_t, std::vector<int>> _participantsByDomain;
 
 	};
 }

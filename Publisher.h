@@ -15,7 +15,9 @@ class Publisher
 {
 	App* _app;
 	std::string _msgClass;
-	int _index; // within app
+	std::string _partitionName;
+	int _index;
+	int _domainId;
 
 	int _participant;
 	std::shared_ptr<TopicRW> _topicRW;
@@ -26,8 +28,7 @@ class Publisher
 	int _seqNum = 0;
 
 public:
-	// ctor
-	Publisher( App* app, std::string msgClass, int index );
+	Publisher( App* app, std::string msgClass, int index, int domainId, const std::string& partitionName );
 	~Publisher();
 	void UpdateSettings( const MsgSettings& spec );
 	void Tick();

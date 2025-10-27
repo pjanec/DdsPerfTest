@@ -76,23 +76,24 @@ void App::Init()
 
 	_particMgr = std::make_shared<ParticMgr>(this);
 	
-	_dataMgr = std::make_shared<DataMgr>( this, [this](const SharedData& data) { OnSharedDataReceived(data); } );
+	// Create a dedicated participant for control plane communication on Domain 0
+	int controlParticipant = _particMgr->GetParticipant(0, 0);
+	_dataMgr = std::make_shared<DataMgr>( this, controlParticipant, [this](const SharedData& data) { OnSharedDataReceived(data); } );
 	_dataMgr->RestoreSettings();
 
 	_msgEdit = std::make_shared<MsgEdit>( this, _dataMgr->GetLocal() );
 	_msgEdit->OnChanged = [this]() { OnMsgEditChanged(); };
 
-
-	_subsStatsMgr = std::make_shared<SubsStatsMgr>( this );
+	_subsStatsMgr = std::make_shared<SubsStatsMgr>( this, controlParticipant );
 	
-	_appScan = std::make_shared<AppScan>( this );
+	_appScan = std::make_shared<AppScan>( this, controlParticipant );
 	_appScan->OnScanFinished = [this](const std::vector<AppId>& apps) { OnAppsFound(apps); };
 	_appScan->PublishAppId(_appId);
 	_appScan->Scan();
 
-	_allMsgCtrl = std::make_shared<AllMsgsCtrl>(this);
+	_allMsgCtrl = std::make_shared<AllMsgsCtrl>(this, _particMgr);
 
-	_commandMgr = std::make_shared<CommandMgr>(this);
+	_commandMgr = std::make_shared<CommandMgr>(this, controlParticipant);
 	_commandMgr->OnCommand = [this](const Command& cmd) { ProcessCommand(cmd); };
 
 	_sysMonitor = std::make_shared<SysMonitor>(this);
@@ -250,9 +251,9 @@ void App::ProcessCommand(const Command& cmd)
 }
 
 
-int App::GetParticipant(int index)
+int App::GetParticipant(int index, dds_domainid_t domainId)
 {
-	return _particMgr->GetParticipant(index);
+	return _particMgr->GetParticipant(index, domainId);
 }
 
 int App::GetSubsStatsWriter() const

@@ -3,12 +3,11 @@
 
 namespace DdsPerfTest
 {
-	DataMgr::DataMgr( App* app, std::function<void(const SharedData&)> onReceived )
+	DataMgr::DataMgr( App* app, int participant, std::function<void(const SharedData&)> onReceived )
 	{
         _app = app;
         _onReceived = onReceived;
 
-        int participant = _app->GetParticipant(0);
         _sharedDataRW = std::make_shared<TopicRW>(participant, "MasterSettings", &Net_MasterSettings_desc, DDS_RELIABILITY_RELIABLE, DDS_DURABILITY_TRANSIENT_LOCAL, DDS_HISTORY_KEEP_LAST, 1);
     }
 
@@ -75,7 +74,7 @@ namespace DdsPerfTest
                     publCnt.push_back(elem);
                 }
 
-                MsgSettings msg(net.Name, net.Disabled, net.Opened, net.Rate, net.Size, subsCnt, publCnt, net.AllSubsDisabled, net.AllPublDisabled);
+                MsgSettings msg(net.Name, net.Disabled, net.Opened, net.Rate, net.Size, net.DomainId, net.PartitionName ? net.PartitionName : "", subsCnt, publCnt, net.AllSubsDisabled, net.AllPublDisabled);
                 shd.Msgs[msg.Name] = msg;
             }
 
@@ -103,14 +102,36 @@ namespace DdsPerfTest
             sample.Apps._buffer[i].ProcessId = settings.Apps[i].ProcessId;
         }
 
-        for (int i = 0; i < (int)settings.Msgs.size(); i++)
+        auto& msgDefs = _app->GetMsgDefs();
+        
+        int validMsgCount = 0;
+        for (const auto& msg : settings.Msgs)
         {
-            sample.Msgs._length = (int)settings.Msgs.size();
-            sample.Msgs._maximum = (int)settings.Msgs.size();
-            sample.Msgs._buffer = new Net_MsgSpec[settings.Msgs.size()];
+            auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
+                [&msg](const MsgDef& msgDef) { return msgDef.Name == msg.first; });
+            
+            if (msgDefIt != msgDefs.end())
+            {
+                validMsgCount++;
+            }
+        }
+
+        if (validMsgCount > 0)
+        {
+            sample.Msgs._length = validMsgCount;
+            sample.Msgs._maximum = validMsgCount;
+            sample.Msgs._buffer = new Net_MsgSpec[validMsgCount];
             int j = 0;
             for (auto& msg : settings.Msgs)
             {
+                auto msgDefIt = std::find_if(msgDefs.begin(), msgDefs.end(), 
+                    [&msg](const MsgDef& msgDef) { return msgDef.Name == msg.first; });
+                
+                if (msgDefIt == msgDefs.end())
+                {
+                    continue;
+                }
+                
                 auto& p = sample.Msgs._buffer[j];
                 auto& q = msg.second;
                 p.Disabled = q.Disabled;
@@ -118,6 +139,8 @@ namespace DdsPerfTest
                 p.Name = (char*)q.Name.c_str();
                 p.Rate = q.Rate;
                 p.Size = q.Size;
+                p.DomainId = q.DomainId;
+                p.PartitionName = (char*)q.PartitionName.c_str();
 
                 p.SubsCnt._length = (int)q.SubsCnt.size();
                 p.SubsCnt._maximum = (int)q.SubsCnt.size();
@@ -150,11 +173,13 @@ namespace DdsPerfTest
     {
         FILE* f = fopen("settings.csv", "w");
         if (!f) return;
-        fprintf(f, "Name,Disabled,Opened,Rate,Size,AllPublDisabled,AllSubsDisabled\n");
+        fprintf(f, "Name,Disabled,Opened,Rate,Size,DomainId,PartitionName,AllPublDisabled,AllSubsDisabled\n");
         for (auto& kv : settings.Msgs)
         {
             auto& msg = kv.second;
-            fprintf(f, "%s,%d,%d,%d,%d,%d,%d,", msg.Name.c_str(), msg.Disabled, msg.Opened, msg.Rate, msg.Size, msg.AllPublDisabled, msg.AllSubsDisabled);
+            fprintf(f, "%s,%d,%d,%d,%d,%d,\"%s\",%d,%d,", 
+                msg.Name.c_str(), msg.Disabled, msg.Opened, msg.Rate, msg.Size, 
+                msg.DomainId, msg.PartitionName.c_str(), msg.AllPublDisabled, msg.AllSubsDisabled);
 
             for (int i = 0; i < MAX_APPS; i++)
             {
@@ -176,111 +201,81 @@ namespace DdsPerfTest
         fclose(f);
     }
 
+    static std::vector<std::string> parseCsvLine(const char* line)
+    {
+        std::vector<std::string> fields;
+        std::string currentField;
+        bool inQuotes = false;
+        
+        for (const char* p = line; *p; ++p)
+        {
+            if (*p == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (*p == ',' && !inQuotes)
+            {
+                fields.push_back(currentField);
+                currentField.clear();
+            }
+            else
+            {
+                currentField += *p;
+            }
+        }
+        fields.push_back(currentField);
+        return fields;
+    }
+
     void DataMgr::RestoreSettings(SharedData& settings)
     {
         FILE* f = fopen("settings.csv", "r");
         if (!f) return;
-
-        // read line by line
+        
         settings.Msgs.clear();
-        int lineNo = 0;
-        while (!feof(f))
+        
+        char line[10024];
+        if (fgets(line, sizeof(line), f) == NULL)
         {
-            char line[10024];
-            while (fgets(line, sizeof(line), f))
-            {
-                lineNo++;
-                if (lineNo == 1) continue; // skip the header line
-
-                MsgSettings msg;
-                char name[1000] = {};
-                int opened = 0;
-                int allPublDisabled = 0;
-                int allSubsDisabled = 0;
-
-                // Parse the initial fixed fields: name, disabled, opened, rate, size, allPublDisabled, allSubsDisabled
-                const char* pos = line;
-                
-                // Parse name (up to first comma)
-                const char* comma = strchr(pos, ',');
-                if (!comma) continue;
-                size_t nameLen = comma - pos;
-                if (nameLen >= sizeof(name)) nameLen = sizeof(name) - 1;
-                strncpy(name, pos, nameLen);
-                name[nameLen] = '\0';
-                pos = comma + 1;
-
-                // Parse disabled
-                msg.Disabled = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Parse opened
-                opened = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Parse rate
-                msg.Rate = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Parse size
-                msg.Size = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Parse allPublDisabled
-                allPublDisabled = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Parse allSubsDisabled
-                allSubsDisabled = atoi(pos);
-                comma = strchr(pos, ',');
-                if (!comma) continue;
-                pos = comma + 1;
-
-                // Now dynamically parse MAX_APPS publisher counts
-                msg.PublCnt.clear();
-                for (int i = 0; i < MAX_APPS; i++)
-                {
-                    int publCount = atoi(pos);
-                    msg.PublCnt.push_back(publCount);
-                    
-                    comma = strchr(pos, ',');
-                    if (!comma) break; // End of line or malformed
-                    pos = comma + 1;
-                }
-
-                // Now dynamically parse MAX_APPS subscriber counts
-                msg.SubsCnt.clear();
-                for (int i = 0; i < MAX_APPS; i++)
-                {
-                    int subsCount = atoi(pos);
-                    msg.SubsCnt.push_back(subsCount);
-
-                    comma = strchr(pos, ',');
-                    if (comma) pos = comma + 1;
-                    // For the last subscriber count, there might not be a comma
-                }
-
-                // Set the parsed values
-                msg.Name = name;
-                msg.Opened = opened;
-                msg.AllPublDisabled = allPublDisabled;
-                msg.AllSubsDisabled = allSubsDisabled;
-
-                settings.Msgs[msg.Name] = msg;
-            }
+            fclose(f);
+            return;
         }
+        
+        while (fgets(line, sizeof(line), f))
+        {
+            std::vector<std::string> fields = parseCsvLine(line);
+            if (fields.size() < 9 + (2 * MAX_APPS))
+            {
+                continue;
+            }
+            
+            MsgSettings msg;
+            msg.Name = fields[0];
+            msg.Disabled = std::stoi(fields[1]);
+            msg.Opened = (fields[2] == "1");
+            msg.Rate = std::stoi(fields[3]);
+            msg.Size = std::stoi(fields[4]);
+            msg.DomainId = std::stoi(fields[5]);
+            msg.PartitionName = fields[6];
+            msg.AllPublDisabled = (fields[7] == "1");
+            msg.AllSubsDisabled = (fields[8] == "1");
+            
+            msg.PublCnt.clear();
+            for (int i = 0; i < MAX_APPS; ++i)
+            {
+                msg.PublCnt.push_back(std::stoi(fields[9 + i]));
+            }
+            
+            msg.SubsCnt.clear();
+            for (int i = 0; i < MAX_APPS; ++i)
+            {
+                msg.SubsCnt.push_back(std::stoi(fields[9 + MAX_APPS + i]));
+            }
+            
+            settings.Msgs[msg.Name] = msg;
+        }
+        
         fclose(f);
-
     }
 
     void DataMgr::SaveSettings()
@@ -288,7 +283,7 @@ namespace DdsPerfTest
         SaveSettings( _local );
     }
 
-    void DataMgr::RestoreSettings()
+    void DataMgr::RestoreSettings() 
     {
         RestoreSettings( _local );
     }

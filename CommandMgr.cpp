@@ -8,10 +8,9 @@
 
 namespace DdsPerfTest
 {
-	CommandMgr::CommandMgr(App* app)
+	CommandMgr::CommandMgr(App* app, int participant)
 	: _app(app)
 	{
-		int participant = app->GetParticipant(0);
 		_commandRW = std::make_shared<TopicRW>(participant, "Command", &Net_Command_desc, DDS_RELIABILITY_RELIABLE, DDS_DURABILITY_VOLATILE, DDS_HISTORY_KEEP_ALL, 1);
 	}
 

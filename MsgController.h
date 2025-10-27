@@ -25,13 +25,13 @@ class MsgController
 protected:
 	App* _app;
 	std::string _msgClass;
+	int _domainId;  // DDS domain ID for this message class
 	MsgSettings _spec;
 	std::vector<std::shared_ptr<Publisher>> _publishers;
 	std::vector<std::shared_ptr<Subscriber>> _subscribers;
 
 public:
-	// initializes without any publishers/subscribers
-	MsgController( App* app, std::string msgClass);
+	MsgController( App* app, std::string msgClass, int domainId);
 	~MsgController();
 	const MsgSettings& GetSpec() const { return _spec; }
 

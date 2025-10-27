@@ -16,7 +16,7 @@ namespace DdsPerfTest
 	class SubsStatsMgr
 	{
 	public:
-		SubsStatsMgr(App* app);
+		SubsStatsMgr(App* app, int participant);
 		void Tick();
 
 		void DrawUI();

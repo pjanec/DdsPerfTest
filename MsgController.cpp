@@ -10,11 +10,12 @@
 namespace DdsPerfTest
 {
 
-MsgController::MsgController( App* app, std::string msgClass )
+MsgController::MsgController( App* app, std::string msgClass, int domainId )
 {
     _app = app;
     _msgClass = msgClass;
-    printf("MsgController::MsgController(%s)\n", msgClass.c_str());
+    _domainId = domainId;
+    printf("MsgController::MsgController(%s on domain %d)\n", msgClass.c_str(), domainId);
 }
 
 MsgController::~MsgController()
@@ -59,10 +60,9 @@ void MsgController::UpdateSettings( const MsgSettings& msgSpec, bool allDisabled
 
 	if(numPublThisApp > (int)_publishers.size() )
 	{
-        // create new publishers
         for( int i = (int)_publishers.size(); i < numPublThisApp; i++ )
 	    {
-		    _publishers.push_back(std::make_shared<Publisher>(_app, _msgClass, i));
+		    _publishers.push_back(std::make_shared<Publisher>(_app, _msgClass, i, _domainId, msgSpec.PartitionName));
 	    }
     }
     else if(numPublThisApp < (int)_publishers.size() )
@@ -89,10 +89,9 @@ void MsgController::UpdateSettings( const MsgSettings& msgSpec, bool allDisabled
 
     if(numSubsThisApp > (int)_subscribers.size() )
     {
-		// create new subscribers
 		for( int i = (int)_subscribers.size(); i < numSubsThisApp; i++ )
 	    {
-		    _subscribers.push_back(std::make_shared<Subscriber>(_app, _msgClass, i));
+		    _subscribers.push_back(std::make_shared<Subscriber>(_app, _msgClass, i, _domainId, msgSpec.PartitionName));
 	    }
 	}
 	else if(numSubsThisApp < (int)_subscribers.size() )

@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <set>
 #include "NetworkDefs.h"
 #include <memory>
 #include "SharedData.h"
@@ -13,6 +14,7 @@ namespace DdsPerfTest
 class App;
 class MsgController;
 class TopicRW;
+class ParticMgr;
 
 /// <summary>
 /// One per app;
@@ -23,7 +25,7 @@ class TopicRW;
 class AllMsgsCtrl
 {
 public:
-	AllMsgsCtrl( App* app );
+	AllMsgsCtrl( App* app, std::shared_ptr<ParticMgr> particMgr );
 	~AllMsgsCtrl();
 
 	void Tick();
@@ -36,6 +38,7 @@ protected:
 
 protected:
 	App* _app;
+	std::shared_ptr<ParticMgr> _particMgr;
 	std::map<std::string, std::shared_ptr<MsgController>> _msgControllers;
 
 

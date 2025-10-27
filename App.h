@@ -31,9 +31,10 @@ public:
 	void Reset();
 	
 public:
+	// Get a participant for a specific index and domain
 	// index 0 is for the first tier of publishers/subscribers on machine
 	// index 1 is for the second tier of publishers/subscribers on machine
-	int GetParticipant( int index );
+	int GetParticipant( int index, dds_domainid_t domainId );
 	
 	std::vector<MsgDef>& GetMsgDefs() { return _msgDefs; }
 	const AppId& GetAppId() const;

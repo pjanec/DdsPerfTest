@@ -5,10 +5,9 @@
 
 namespace DdsPerfTest
 {
-	AppScan::AppScan(App* app)
+	AppScan::AppScan(App* app, int participant)
 	: _app(app)
 	{
-		int participant = _app->GetParticipant(0);
 		_appIdRW = std::make_shared<TopicRW>(participant, "AppId", &Net_AppId_desc, DDS_RELIABILITY_RELIABLE, DDS_DURABILITY_TRANSIENT_LOCAL, DDS_HISTORY_KEEP_LAST, 1 );
 	}
 

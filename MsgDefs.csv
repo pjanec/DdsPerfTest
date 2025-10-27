@@ -1,32 +1,32 @@
-Name,Reliability,Durability,History,HistoryDepth,ReadStrategy,PartitionName
+Name,Reliability,Durability,History,HistoryDepth,ReadStrategy,PartitionName,DomainId
 
 ; commands
-cmd_RTA_P,reliable,transientLocal,keepAll,0,Poll,""
-cmd_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed,""
-cmd_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer,""
+cmd_RTA_P,reliable,transientLocal,keepAll,0,Poll,"",0
+cmd_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed,"",0
+cmd_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer,"",0
 
 ; infrequent state updates
-stat_RVL1_P,reliable,volatile,keepLast,1,Poll,""
-stat_RVL1_LI,reliable,volatile,keepLast,1,ListenImmed,""
-stat_RVL1_LD,reliable,volatile,keepLast,1,ListenDefer,""
+stat_RVL1_P,reliable,volatile,keepLast,1,Poll,"",0
+stat_RVL1_LI,reliable,volatile,keepLast,1,ListenImmed,"",0
+stat_RVL1_LD,reliable,volatile,keepLast,1,ListenDefer,"",0
 
 ; frequent state updates
-stat_UVL1_P,bestEffort,volatile,keepLast,1,Poll,""
-stat_UVL1_LI,bestEffort,volatile,keepLast,1,ListenImmed,""
-stat_UVL1_LD,bestEffort,volatile,keepLast,1,ListenDefer,""
+stat_UVL1_P,bestEffort,volatile,keepLast,1,Poll,"",0
+stat_UVL1_LI,bestEffort,volatile,keepLast,1,ListenImmed,"",0
+stat_UVL1_LD,bestEffort,volatile,keepLast,1,ListenDefer,"",0
 
 ; strangely defined event messages making late-joiners suffer from getting all historical events
-strange_RTA_P,reliable,transientLocal,keepAll,0,Poll,""
-strange_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed,""
-strange_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer,""
+strange_RTA_P,reliable,transientLocal,keepAll,0,Poll,"",0
+strange_RTA_LI,reliable,transientLocal,keepAll,0,ListenImmed,"",0
+strange_RTA_LD,reliable,transientLocal,keepAll,0,ListenDefer,"",0
 
 ; some other testing ones
-RVA_P,reliable,volatile,keepAll,0,Poll,""
-UTL9_LI,bestEffort,transientLocal,KeepLast,9,ListenImmed,""
-RTA_LD,Reliable,transientLocal,KeepAll,3,ListenDefer,""
+RVA_P,reliable,volatile,keepAll,0,Poll,"",0
+UTL9_LI,bestEffort,transientLocal,KeepLast,9,ListenImmed,"",0
+RTA_LD,Reliable,transientLocal,KeepAll,3,ListenDefer,"",0
 
 ; partition test messages
-stat_RVL1_LI_Robot1,reliable,volatile,keepLast,1,ListenImmed,"Robot1"
-stat_RVL1_LI_Robot2,reliable,volatile,keepLast,1,ListenImmed,"Robot2"
-event_Shared,reliable,volatile,keepLast,10,ListenDefer,"Robot1,Robot2,SharedData"
-global_Status,bestEffort,volatile,keepLast,1,ListenImmed,""
+stat_RVL1_LI_Robot1,reliable,volatile,keepLast,1,ListenImmed,"Robot1",0
+stat_RVL1_LI_Robot2,reliable,volatile,keepLast,1,ListenImmed,"Robot2",0
+event_Shared,reliable,volatile,keepLast,10,ListenDefer,"Robot1,Robot2,SharedData",0
+global_Status,bestEffort,volatile,keepLast,1,ListenImmed,"",0

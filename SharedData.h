@@ -36,22 +36,35 @@ namespace DdsPerfTest
 		bool Opened;
 		int Rate;
 		int Size;
+		int DomainId;
+		std::string PartitionName;
 		std::vector<int> SubsCnt;
 		std::vector<int> PublCnt;
 		bool AllSubsDisabled;
 		bool AllPublDisabled;
 
-
-		// default ctor that zeroes the contents
 		MsgSettings()
-		: Name(""), Disabled(0), Opened(false), Rate(0), Size(0), SubsCnt(), PublCnt(), AllSubsDisabled(false), AllPublDisabled(false)
+		: Name(""), Disabled(0), Opened(false), Rate(0), Size(0), DomainId(0), PartitionName(""), SubsCnt(), PublCnt(), AllSubsDisabled(false), AllPublDisabled(false)
 		{
 		}
 
-		// ctor with fields
-		MsgSettings(std::string name, int disabled, bool opened, int rate, int size, const std::vector<int>& subsCnt, const std::vector<int>& publCnt, bool allSubsDisabled, bool allPublDisabled)
-			: Disabled(disabled), Name(name), Opened(opened), Rate(rate), Size(size), SubsCnt(subsCnt), PublCnt(publCnt), AllSubsDisabled(allSubsDisabled), AllPublDisabled(allPublDisabled)
+		MsgSettings(std::string name, int disabled, bool opened, int rate, int size, int domainId, std::string partitionName, const std::vector<int>& subsCnt, const std::vector<int>& publCnt, bool allSubsDisabled, bool allPublDisabled)
+			: Disabled(disabled), Name(name), Opened(opened), Rate(rate), Size(size), DomainId(domainId), PartitionName(partitionName), SubsCnt(subsCnt), PublCnt(publCnt), AllSubsDisabled(allSubsDisabled), AllPublDisabled(allPublDisabled)
 		{
+		}
+
+		bool operator!=(const MsgSettings& other) const
+		{
+			return Name != other.Name ||
+				Disabled != other.Disabled ||
+				Rate != other.Rate ||
+				Size != other.Size ||
+				DomainId != other.DomainId ||
+				PartitionName != other.PartitionName ||
+				SubsCnt != other.SubsCnt ||
+				PublCnt != other.PublCnt ||
+				AllSubsDisabled != other.AllSubsDisabled ||
+				AllPublDisabled != other.AllPublDisabled;
 		}
 	};
 
@@ -138,7 +151,8 @@ namespace DdsPerfTest
 	struct SubsStats
 	{
 		PubSubKey Key;
-		std::string PartitionName;  // NEW: Partition name(s) for this subscriber
+		int DomainId;  // DDS domain ID for this subscriber
+		std::string PartitionName;  // Partition name(s) for this subscriber
 		int Received;
 		int Rate;
 		int Lost;

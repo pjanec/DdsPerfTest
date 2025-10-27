@@ -25,6 +25,34 @@ namespace DdsPerfTest
 		return partitions;
 	}
 
+static std::string ParseCsvField(const char*& line) {
+    std::string field;
+    
+    while (*line && (*line == ' ' || *line == '\t')) {
+        line++;
+    }
+    
+    if (*line == '"') {
+        line++;
+        while (*line && *line != '"') {
+            if (*line == '\0') break;
+            field += *line++;
+        }
+        if (*line == '"') {
+            line++;
+        }
+        while (*line && *line != ',') line++;
+        if (*line == ',') line++;
+    } else {
+        while (*line && *line != ',' && *line != '\r' && *line != '\n') {
+            field += *line++;
+        }
+        if (*line == ',') line++;
+    }
+    
+    return field;
+}
+
 	std::vector<MsgDef> MsgDef::ReadListFromFile(std::string fileName)
 	{
 		std::vector<MsgDef> result;
@@ -36,62 +64,65 @@ namespace DdsPerfTest
 			while (fgets(line, sizeof(line), f))
 			{
 				lineNo++;
-				if (lineNo == 1) continue; // skip the header line
+				if (lineNo == 1) continue;
 				
-				// Skip comment lines starting with ';'
 				if (line[0] == ';') continue;
 
 				MsgDef msgDef;
-				char name[1000] = { 0 };
-				char reliability[1000] = {0};
-				char durability[1000] = { 0 };
-				char history[1000] = { 0 };
-				int historyDepth = { 0 };
-				char readStrategy[1000] = { 0 };
-				char partitionName[1000] = { 0 };
+				const char* ptr = line;
+				
+				std::string nameStr = ParseCsvField(ptr);
+				std::string reliabilityStr = ParseCsvField(ptr);
+				std::string durabilityStr = ParseCsvField(ptr);
+				std::string historyStr = ParseCsvField(ptr);
+				std::string historyDepthStr = ParseCsvField(ptr);
+				std::string readStrategyStr = ParseCsvField(ptr);
+				std::string partitionNameStr = ParseCsvField(ptr);
+				std::string domainIdStr = ParseCsvField(ptr);
 
-				int fieldsRead = sscanf(line, "%[^,],%[^,],%[^,],%[^,],%d,%[^,],%[^\n]", 
-					name, reliability, durability, history, &historyDepth, readStrategy, partitionName);
+				if (nameStr.empty()) continue;
 
-				if (fieldsRead >= 6)  // At least the original 6 fields
-				{
-					msgDef.Name = name;
+				msgDef.Name = nameStr;
 
-					if( !_stricmp(reliability, "Reliable") ) msgDef.Reliability = DDS_RELIABILITY_RELIABLE;
-					else
-					if (!_stricmp(reliability, "BestEffort")) msgDef.Reliability = DDS_RELIABILITY_BEST_EFFORT;
-					else
-						DDS_FATAL("Unknown reliability: %s\n", reliability);
+				if (!_stricmp(reliabilityStr.c_str(), "Reliable")) 
+					msgDef.Reliability = DDS_RELIABILITY_RELIABLE;
+				else if (!_stricmp(reliabilityStr.c_str(), "BestEffort")) 
+					msgDef.Reliability = DDS_RELIABILITY_BEST_EFFORT;
+				else
+					DDS_FATAL("Unknown reliability: %s\n", reliabilityStr.c_str());
 
-					if (!_stricmp(durability, "TransientLocal")) msgDef.Durability = DDS_DURABILITY_TRANSIENT_LOCAL;
-					else
-					if (!_stricmp(durability, "Volatile")) msgDef.Durability = DDS_DURABILITY_VOLATILE;
-					else
-						DDS_FATAL("Unknown durability: %s\n", durability);
+				if (!_stricmp(durabilityStr.c_str(), "TransientLocal")) 
+					msgDef.Durability = DDS_DURABILITY_TRANSIENT_LOCAL;
+				else if (!_stricmp(durabilityStr.c_str(), "Volatile")) 
+					msgDef.Durability = DDS_DURABILITY_VOLATILE;
+				else
+					DDS_FATAL("Unknown durability: %s\n", durabilityStr.c_str());
 
-					if (!_stricmp(history, "KeepAll")) msgDef.History = DDS_HISTORY_KEEP_ALL;
-					else
-					if (!_stricmp(history, "KeepLast")) msgDef.History = DDS_HISTORY_KEEP_LAST;
-					else
-						DDS_FATAL("Unknown history: %s\n", history);
+				if (!_stricmp(historyStr.c_str(), "KeepAll")) 
+					msgDef.History = DDS_HISTORY_KEEP_ALL;
+				else if (!_stricmp(historyStr.c_str(), "KeepLast")) 
+					msgDef.History = DDS_HISTORY_KEEP_LAST;
+				else
+					DDS_FATAL("Unknown history: %s\n", historyStr.c_str());
 
-					msgDef.HistoryDepth = historyDepth;
+				msgDef.HistoryDepth = atoi(historyDepthStr.c_str());
 
-					if (!_stricmp(readStrategy, "Poll")) msgDef.ReadStrategy = ssPoll;
-					else
-					if (!_stricmp(readStrategy, "ListenImmed")) msgDef.ReadStrategy = ssListenImmed;
-					else
-					if (!_stricmp(readStrategy, "ListenDefer")) msgDef.ReadStrategy = ssListenDefer;
-					else
-						DDS_FATAL("Unknown readStrategy: %s\n", readStrategy);
+				if (!_stricmp(readStrategyStr.c_str(), "Poll")) 
+					msgDef.ReadStrategy = ssPoll;
+				else if (!_stricmp(readStrategyStr.c_str(), "ListenImmed")) 
+					msgDef.ReadStrategy = ssListenImmed;
+				else if (!_stricmp(readStrategyStr.c_str(), "ListenDefer")) 
+					msgDef.ReadStrategy = ssListenDefer;
+				else
+					DDS_FATAL("Unknown readStrategy: %s\n", readStrategyStr.c_str());
 
-					// Handle partition name (7th field, optional)
-					if (fieldsRead >= 7) {
-						msgDef.PartitionName = partitionName;
-					}
-
-					result.push_back(msgDef);
+				msgDef.PartitionName = partitionNameStr;
+				
+				if (!domainIdStr.empty()) {
+					msgDef.DomainId = atoi(domainIdStr.c_str());
 				}
+
+				result.push_back(msgDef);
 			}
 			fclose(f);
 		}
